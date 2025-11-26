@@ -7,9 +7,14 @@ from .node_base import NodeBase
 from combat.damage_system import Stats, DamagePacket
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
-from items.inventory import Inventory
-from items.equipment import Equipment
-from items.item_database import ITEM_DB
+
+# ทำให้รันได้แม้ยังไม่ได้ทำระบบ inventory/equipment
+try:
+    from items.inventory import Inventory
+    from items.equipment import Equipment
+except ImportError:  # เผื่อคุณยังไม่ได้สร้างไฟล์เหล่านี้
+    Inventory = None
+    Equipment = None
 
 
 class PlayerNode(NodeBase):
@@ -30,7 +35,7 @@ class PlayerNode(NodeBase):
         pygame.draw.circle(self.image, (240, 240, 240), (radius, radius), radius)
         self.rect = self.image.get_rect(center=pos)
 
-        # combat stats
+        # --- COMBAT STATS ---
         self.stats = Stats(
             max_hp=100,
             hp=100,
@@ -41,68 +46,100 @@ class PlayerNode(NodeBase):
             crit_chance=0.1,
             crit_multiplier=1.7,
         )
-
-        # status effects (buff/debuff)
         self.status = StatusEffectManager(self)
 
-        # INVENTORY & EQUIPMENT
-        self.inventory = Inventory(size=20)
-        self.equipment = Equipment()
+        # --- INVENTORY / EQUIPMENT (ถ้ามีคลาสให้ใช้) ---
+        if Inventory is not None:
+            self.inventory = Inventory(size=20)
+            # ของเริ่มต้น
+            self.inventory.add_item("potion_small", 5)
+            self.inventory.add_item("sword_basic", 1)
+        else:
+            self.inventory = None
 
-        # ของเริ่มต้น
-        self.inventory.add_item("potion_small", 5)
-        self.inventory.add_item("sword_basic", 1)
-        self.inventory.add_item("sword_iron", 1)
+        if Equipment is not None:
+            self.equipment = Equipment()
+        else:
+            self.equipment = None
 
-        # movement
-        self.move_speed = PLAYER_SPEED
-        self.velocity = pygame.Vector2(0, 0)
+        # --- MOVEMENT & COLLISION ---
+        self.move_speed = PLAYER_SPEED          # pixels / second
+        self.facing = pygame.Vector2(1, 0)      # ทิศที่หัน (ใช้ตอนยิง)
+        self.collision_rects: list[pygame.Rect] = []  # จะได้จาก TileMap
 
-        # direction เอาไว้ใช้กับการยิง (เริ่มต้นมองขวา)
-        self.facing = pygame.Vector2(1, 0)
+    # ========== COLLISION API ==========
+    def set_collision_rects(self, rects) -> None:
+        """ให้ GameScene ส่ง list ของกำแพงเข้ามาทุกเฟรม"""
+        self.collision_rects = list(rects) if rects is not None else []
 
-    # ---------- INPUT + MOVE ----------
+    # ========== MOVEMENT + COLLISION ==========
+    def _move_with_collision(self, dx: float, dy: float) -> None:
+        # แกน X
+        self.rect.x += int(dx)
+        for block in self.collision_rects:
+            if self.rect.colliderect(block):
+                if dx > 0:
+                    self.rect.right = block.left
+                elif dx < 0:
+                    self.rect.left = block.right
+
+        # แกน Y
+        self.rect.y += int(dy)
+        for block in self.collision_rects:
+            if self.rect.colliderect(block):
+                if dy > 0:
+                    self.rect.bottom = block.top
+                elif dy < 0:
+                    self.rect.top = block.bottom
+
     def _handle_input(self, dt: float) -> None:
         keys = pygame.key.get_pressed()
-        self.velocity.update(0, 0)
+        move_dir = pygame.Vector2(0, 0)
 
-        if keys[pygame.K_w]:
-            self.velocity.y -= 1
-        if keys[pygame.K_s]:
-            self.velocity.y += 1
-        if keys[pygame.K_a]:
-            self.velocity.x -= 1
-        if keys[pygame.K_d]:
-            self.velocity.x += 1
+        if keys[pygame.K_w] or keys[pygame.K_UP]:
+            move_dir.y -= 1
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+            move_dir.y += 1
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+            move_dir.x -= 1
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+            move_dir.x += 1
 
-        if self.velocity.length_squared() > 0:
-            self.velocity = self.velocity.normalize() * self.move_speed * dt
-            self.rect.centerx += int(self.velocity.x)
-            self.rect.centery += int(self.velocity.y)
-            # อัปเดตทิศที่หัน
-            self.facing = self.velocity.normalize()
 
-    # ---------- COMBAT ----------
+        if move_dir.length_squared() > 0:
+            move_dir = move_dir.normalize()
+            dx = move_dir.x * self.move_speed * dt
+            dy = move_dir.y * self.move_speed * dt
+
+            # ขยับพร้อมเช็คชนกำแพง
+            self._move_with_collision(dx, dy)
+
+            # เก็บทิศไว้ใช้ตอนยิง
+            self.facing = move_dir
+
+    # ========== COMBAT ==========
+    def _get_current_weapon_base_damage(self) -> int:
+        """ตัวอย่างง่าย ๆ: ถ้ามี equipment ก็ให้ base สูงขึ้นหน่อย"""
+        if self.equipment is not None:
+            weapon = self.equipment.get_item("main_hand")
+            if weapon and weapon.item_type == "weapon":
+                if weapon.id == "sword_basic":
+                    return 15
+                elif weapon.id == "sword_iron":
+                    return 25
+                else:
+                    return 18
+        return 10  # ชกมือเปล่า
+
     def shoot(self) -> None:
-        """ยิง projectile ไปในทิศทางที่ player กำลังหันอยู่ (self.facing)."""
+        """ยิง projectile ไปในทิศทาง self.facing"""
         from .projectile_node import ProjectileNode
 
         direction = self.facing
         if direction.length_squared() == 0:
-            direction = pygame.Vector2(1, 0)  # ถ้ายังไม่เคยเดิน ให้ยิงไปทางขวา
+            direction = pygame.Vector2(1, 0)
 
-        # คำนวณ base damage จากอาวุธที่ใส่อยู่
-        weapon = self.equipment.get_item("main_hand")
-        if weapon and weapon.item_type == "weapon":
-            # ตัวอย่างง่าย ๆ: ต่างกันแค่เลข base
-            if weapon.id == "sword_basic":
-                base_damage = 15
-            elif weapon.id == "sword_iron":
-                base_damage = 25
-            else:
-                base_damage = 18
-        else:
-            base_damage = 10  # ชกมือเปล่า
+        base_damage = self._get_current_weapon_base_damage()
 
         packet = DamagePacket(
             base=base_damage,
@@ -122,12 +159,11 @@ class PlayerNode(NodeBase):
         )
 
     def take_damage(self, attacker_stats: Stats, result_damage: int) -> None:
-        """ไว้ให้ enemy ใช้ตอนโจมตี player (ตอนนี้ยังไม่ถูกเรียกใช้)."""
         self.stats.hp = max(0, self.stats.hp - result_damage)
         if self.stats.is_dead():
             print("Player died!")
 
-    # ---------- UPDATE ----------
+    # ========== UPDATE ==========
     def update(self, dt: float) -> None:
         self.status.update(dt)
         self._handle_input(dt)

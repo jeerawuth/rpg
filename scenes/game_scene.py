@@ -7,6 +7,8 @@ from .base_scene import BaseScene
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
 from combat.collision_system import handle_group_vs_group
+from world.level_data import load_level
+from world.tilemap import TileMap
 
 
 class GameScene(BaseScene):
@@ -14,27 +16,32 @@ class GameScene(BaseScene):
         super().__init__(game)
         self.font = pygame.font.Font(None, 32)
 
-        # --- Sprite groups ---
+        # ---------- LEVEL / TILEMAP ----------
+        self.level_data = load_level("level01")
+        self.tilemap = TileMap(self.level_data, self.game.resources)
+
+        # ---------- SPRITE GROUPS ----------
         self.all_sprites = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
 
-        # expose ให้ player ใช้ใน shoot()
+        # ให้ object อื่นอ้างถึงได้ (ProjectileNode ฯลฯ)
         self.game.all_sprites = self.all_sprites
         self.game.enemies = self.enemies
         self.game.projectiles = self.projectiles
 
-        # --- Player & Enemy ตัวอย่าง ---
+        # ---------- PLAYER ----------
+        player_spawn = self.level_data.player_spawn
         self.player = PlayerNode(
-            self.game,          # game
-            (400, 300),         # pos
-            self.projectiles,   # projectile_group
-            self.all_sprites,   # *groups
+            self.game,
+            player_spawn,
+            self.projectiles,
+            self.all_sprites,
         )
 
-        # สร้าง enemy สัก 2 ตัว
-        EnemyNode(self.game, (700, 260), self.all_sprites, self.enemies)
-        EnemyNode(self.game, (700, 340), self.all_sprites, self.enemies)
+        # ---------- ENEMIES ----------
+        for pos in self.level_data.enemy_spawns:
+            EnemyNode(self.game, pos, self.all_sprites, self.enemies)
 
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
@@ -46,19 +53,21 @@ class GameScene(BaseScene):
                 if event.key == pygame.K_ESCAPE:
                     self.game.scene_manager.push_scene(PauseScene(self.game))
                 elif event.key == pygame.K_i:
-                    # ✅ ส่ง player เข้า InventoryScene ด้วย
-                    self.game.scene_manager.push_scene(InventoryScene(self.game, self.player))
+                    self.game.scene_manager.push_scene(
+                        InventoryScene(self.game, self.player)
+                    )
                 elif event.key == pygame.K_SPACE:
-                    # ยิง
                     self.player.shoot()
-
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
+        # ส่งกำแพงจาก tilemap ให้ player ใช้ชน
+        self.player.set_collision_rects(self.tilemap.collision_rects)
+
         self.all_sprites.update(dt)
 
-        # ตรวจชน projectile vs enemies
-        from combat.damage_system import DamagePacket  # ใช้แค่เป็น type hint
+        # Projectile vs Enemies
+        from combat.damage_system import DamagePacket  # แค่ type hint
 
         def on_projectile_hit(projectile, enemy):
             if not hasattr(enemy, "take_hit"):
@@ -75,13 +84,18 @@ class GameScene(BaseScene):
 
     # ---------- DRAW ----------
     def draw(self, surface: pygame.Surface) -> None:
-        surface.fill((30, 100, 50))
+        surface.fill((0, 0, 0))
+
+        # วาด tilemap
+        self.tilemap.draw(surface)
+
+        # วาด entity
         self.all_sprites.draw(surface)
 
-        # HUD เล็กน้อย
+        # HUD
         lines = [
-            "Game Scene (Combat Demo)",
-            "WASD - Move | SPACE - Shoot",
+            "Game Scene (Tilemap + Combat + Collision)",
+            "WASD - Move | SPACE - Shoot | I - Inventory",
             f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
             f"Enemies: {len(self.enemies.sprites())}",
         ]
