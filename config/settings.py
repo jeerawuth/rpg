@@ -1,8 +1,8 @@
 # config/settings.py
 # ค่าตั้งค่าหลักของเกม
 
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
 FPS = 60
 
 WINDOW_TITLE = "My 2D Action RPG"

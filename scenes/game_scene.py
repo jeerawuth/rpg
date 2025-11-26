@@ -9,6 +9,8 @@ from entities.enemy_node import EnemyNode
 from combat.collision_system import handle_group_vs_group
 from world.level_data import load_level
 from world.tilemap import TileMap
+from core.camera import Camera
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
 
 
 class GameScene(BaseScene):
@@ -43,6 +45,17 @@ class GameScene(BaseScene):
         for pos in self.level_data.enemy_spawns:
             EnemyNode(self.game, pos, self.all_sprites, self.enemies)
 
+        # ---------- CAMERA ----------
+        self.camera = Camera(
+            world_width=self.tilemap.pixel_width,
+            world_height=self.tilemap.pixel_height,
+            screen_width=SCREEN_WIDTH,
+            screen_height=SCREEN_HEIGHT,
+            follow_speed=8.0,                   # ใช้ตัวนี้แทน smooth_factor
+            deadzone_width=SCREEN_WIDTH // 2,   # กึ่งกลางจอ
+            deadzone_height=SCREEN_HEIGHT // 2,
+        )
+
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
         from .pause_scene import PauseScene
@@ -61,10 +74,13 @@ class GameScene(BaseScene):
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
-        # ส่งกำแพงจาก tilemap ให้ player ใช้ชน
+        # ถ้าคุณใช้ collisionRect จาก tilemap
         self.player.set_collision_rects(self.tilemap.collision_rects)
 
         self.all_sprites.update(dt)
+
+        # อัปเดตกล้องให้ตาม player
+        self.camera.update(self.player.rect, dt)
 
         # Projectile vs Enemies
         from combat.damage_system import DamagePacket  # แค่ type hint
@@ -86,15 +102,20 @@ class GameScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((0, 0, 0))
 
-        # วาด tilemap
-        self.tilemap.draw(surface)
+        offset = self.camera.offset
 
-        # วาด entity
-        self.all_sprites.draw(surface)
+        # วาด tilemap ตาม offset
+        self.tilemap.draw(surface, camera_offset=offset)
 
-        # HUD
+        # วาด sprite โดยเลื่อนตาม offset (แทนการใช้ self.all_sprites.draw(surface) ตรง ๆ)
+        for sprite in self.all_sprites:
+            draw_x = sprite.rect.x - int(offset.x)
+            draw_y = sprite.rect.y - int(offset.y)
+            surface.blit(sprite.image, (draw_x, draw_y))
+
+        # HUD (วาดแบบ fixed screen, ไม่ต้องใช้ offset)
         lines = [
-            "Game Scene (Tilemap + Combat + Collision)",
+            "Game Scene (Camera + Tilemap + Combat)",
             "WASD - Move | SPACE - Shoot | I - Inventory",
             f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
             f"Enemies: {len(self.enemies.sprites())}",

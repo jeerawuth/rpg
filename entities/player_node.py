@@ -105,7 +105,6 @@ class PlayerNode(NodeBase):
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             move_dir.x += 1
 
-
         if move_dir.length_squared() > 0:
             move_dir = move_dir.normalize()
             dx = move_dir.x * self.move_speed * dt

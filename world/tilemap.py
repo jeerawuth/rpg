@@ -18,6 +18,10 @@ class TileMap:
         self.width = level_data.width
         self.height = level_data.height
 
+        # ✅ เพิ่มสองบรรทัดนี้สำหรับกล้อง
+        self.pixel_width = self.width * self.tile_size
+        self.pixel_height = self.height * self.tile_size
+
         # โหลด tileset: assets/graphics/tiles/<tileset>
         self.tileset = self.resources.load_image(
             f"tiles/{level_data.tileset}"
