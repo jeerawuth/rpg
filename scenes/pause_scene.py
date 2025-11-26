@@ -1,0 +1,42 @@
+# scenes/pause_scene.py
+# Pause overlay
+
+from __future__ import annotations
+
+import pygame
+
+from .base_scene import BaseScene
+
+
+class PauseScene(BaseScene):
+    def __init__(self, game) -> None:
+        super().__init__(game)
+        self.title_font = pygame.font.Font(None, 64)
+        self.menu_font = pygame.font.Font(None, 32)
+
+    def handle_events(self, events) -> None:
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_ESCAPE, pygame.K_p):
+                    # กลับไป game scene (pop ตัวเองออก)
+                    self.game.scene_manager.pop_scene()
+
+    def update(self, dt: float) -> None:
+        pass
+
+    def draw(self, surface: pygame.Surface) -> None:
+        # วาด overlay ทับของ game scene ที่อยู่ข้างใต้
+        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        surface.blit(overlay, (0, 0))
+
+        w, h = surface.get_size()
+        title_surf = self.title_font.render("Paused", True, (255, 255, 255))
+        surface.blit(title_surf, title_surf.get_rect(center=(w // 2, h // 3)))
+
+        lines = [
+            "ESC / P - Resume",
+        ]
+        for i, t in enumerate(lines):
+            t_surf = self.menu_font.render(t, True, (230, 230, 230))
+            surface.blit(t_surf, t_surf.get_rect(center=(w // 2, h // 2 + i * 32)))

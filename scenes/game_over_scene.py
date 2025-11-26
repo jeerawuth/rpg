@@ -1,0 +1,40 @@
+# scenes/game_over_scene.py
+
+from __future__ import annotations
+
+import pygame
+
+from .base_scene import BaseScene
+
+
+class GameOverScene(BaseScene):
+    def __init__(self, game, score: int = 0) -> None:
+        super().__init__(game)
+        self.font_big = pygame.font.Font(None, 64)
+        self.font_small = pygame.font.Font(None, 32)
+        self.score = score
+
+    def handle_events(self, events) -> None:
+        from .main_menu_scene import MainMenuScene
+
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    self.game.scene_manager.set_scene(MainMenuScene(self.game))
+                elif event.key == pygame.K_ESCAPE:
+                    self.game.quit()
+
+    def update(self, dt: float) -> None:
+        pass
+
+    def draw(self, surface: pygame.Surface) -> None:
+        surface.fill((30, 0, 0))
+        w, h = surface.get_size()
+        title = self.font_big.render("Game Over", True, (255, 255, 255))
+        surface.blit(title, title.get_rect(center=(w // 2, h // 3)))
+
+        score = self.font_small.render(f"Score: {self.score}", True, (230, 230, 230))
+        surface.blit(score, score.get_rect(center=(w // 2, h // 2)))
+
+        hint = self.font_small.render("ENTER - Main Menu | ESC - Quit", True, (230, 230, 230))
+        surface.blit(hint, hint.get_rect(center=(w // 2, h // 2 + 50)))
