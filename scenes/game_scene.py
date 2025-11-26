@@ -1,11 +1,12 @@
 # scenes/game_scene.py
-# ฉากเกมจริง (ตอนนี้ยังเป็น mock world)
-
 from __future__ import annotations
 
 import pygame
 
 from .base_scene import BaseScene
+from entities.player_node import PlayerNode
+from entities.enemy_node import EnemyNode
+from combat.collision_system import handle_group_vs_group
 
 
 class GameScene(BaseScene):
@@ -13,10 +14,29 @@ class GameScene(BaseScene):
         super().__init__(game)
         self.font = pygame.font.Font(None, 32)
 
-        # TODO: โหลด world/tilemap, player, enemy ฯลฯ
-        self.player_pos = pygame.Vector2(400, 300)
-        self.player_speed = 220
+        # --- Sprite groups ---
+        self.all_sprites = pygame.sprite.Group()
+        self.enemies = pygame.sprite.Group()
+        self.projectiles = pygame.sprite.Group()
 
+        # expose ให้ player ใช้ใน shoot()
+        self.game.all_sprites = self.all_sprites
+        self.game.enemies = self.enemies
+        self.game.projectiles = self.projectiles
+
+        # --- Player & Enemy ตัวอย่าง ---
+        self.player = PlayerNode(
+            self.game,          # game
+            (400, 300),         # pos
+            self.projectiles,   # projectile_group
+            self.all_sprites,   # *groups
+        )
+
+        # สร้าง enemy สัก 2 ตัว
+        EnemyNode(self.game, (700, 260), self.all_sprites, self.enemies)
+        EnemyNode(self.game, (700, 340), self.all_sprites, self.enemies)
+
+    # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
         from .pause_scene import PauseScene
         from .inventory_scene import InventoryScene
@@ -27,35 +47,42 @@ class GameScene(BaseScene):
                     self.game.scene_manager.push_scene(PauseScene(self.game))
                 elif event.key == pygame.K_i:
                     self.game.scene_manager.push_scene(InventoryScene(self.game))
+                elif event.key == pygame.K_SPACE:
+                    # ยิง
+                    self.player.shoot()
 
+    # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
-        keys = pygame.key.get_pressed()
-        velocity = pygame.Vector2(0, 0)
-        if keys[pygame.K_w]:
-            velocity.y -= 1
-        if keys[pygame.K_s]:
-            velocity.y += 1
-        if keys[pygame.K_a]:
-            velocity.x -= 1
-        if keys[pygame.K_d]:
-            velocity.x += 1
-        if velocity.length_squared() > 0:
-            velocity = velocity.normalize() * self.player_speed * dt
-            self.player_pos += velocity
+        self.all_sprites.update(dt)
 
+        # ตรวจชน projectile vs enemies
+        from combat.damage_system import DamagePacket  # ใช้แค่เป็น type hint
+
+        def on_projectile_hit(projectile, enemy):
+            if not hasattr(enemy, "take_hit"):
+                return
+            packet: DamagePacket = projectile.damage_packet
+            enemy.take_hit(projectile.owner.stats, packet)
+
+        handle_group_vs_group(
+            attackers=self.projectiles,
+            targets=self.enemies,
+            on_hit=on_projectile_hit,
+            kill_attack_on_hit=True,
+        )
+
+    # ---------- DRAW ----------
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((30, 100, 50))
+        self.all_sprites.draw(surface)
 
-        # วาด player เป็นวงกลมสีขาว
-        pygame.draw.circle(surface, (240, 240, 240), self.player_pos, 16)
-
-        # HUD text
-        text_lines = [
-            "Game Scene",
-            "WASD - Move",
-            "ESC  - Pause",
-            "I    - Inventory",
+        # HUD เล็กน้อย
+        lines = [
+            "Game Scene (Combat Demo)",
+            "WASD - Move | SPACE - Shoot",
+            f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
+            f"Enemies: {len(self.enemies.sprites())}",
         ]
-        for i, t in enumerate(text_lines):
+        for i, t in enumerate(lines):
             t_surf = self.font.render(t, True, (10, 10, 10))
             surface.blit(t_surf, (20, 20 + i * 24))
