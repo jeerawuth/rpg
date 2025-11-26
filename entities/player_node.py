@@ -7,6 +7,9 @@ from .node_base import NodeBase
 from combat.damage_system import Stats, DamagePacket
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
+from items.inventory import Inventory
+from items.equipment import Equipment
+from items.item_database import ITEM_DB
 
 
 class PlayerNode(NodeBase):
@@ -17,7 +20,6 @@ class PlayerNode(NodeBase):
         projectile_group: pygame.sprite.Group,
         *groups,
     ) -> None:
-        """Player controllable character."""
         super().__init__(*groups)
         self.game = game
         self.projectile_group = projectile_group
@@ -42,6 +44,15 @@ class PlayerNode(NodeBase):
 
         # status effects (buff/debuff)
         self.status = StatusEffectManager(self)
+
+        # INVENTORY & EQUIPMENT
+        self.inventory = Inventory(size=20)
+        self.equipment = Equipment()
+
+        # ของเริ่มต้น
+        self.inventory.add_item("potion_small", 5)
+        self.inventory.add_item("sword_basic", 1)
+        self.inventory.add_item("sword_iron", 1)
 
         # movement
         self.move_speed = PLAYER_SPEED
@@ -80,14 +91,25 @@ class PlayerNode(NodeBase):
         if direction.length_squared() == 0:
             direction = pygame.Vector2(1, 0)  # ถ้ายังไม่เคยเดิน ให้ยิงไปทางขวา
 
-        # กำหนด DamagePacket ของกระสุนจากอาวุธพื้นฐาน
+        # คำนวณ base damage จากอาวุธที่ใส่อยู่
+        weapon = self.equipment.get_item("main_hand")
+        if weapon and weapon.item_type == "weapon":
+            # ตัวอย่างง่าย ๆ: ต่างกันแค่เลข base
+            if weapon.id == "sword_basic":
+                base_damage = 15
+            elif weapon.id == "sword_iron":
+                base_damage = 25
+            else:
+                base_damage = 18
+        else:
+            base_damage = 10  # ชกมือเปล่า
+
         packet = DamagePacket(
-            base=15,
+            base=base_damage,
             damage_type="physical",
             scaling_attack=0.8,
         )
 
-        # ✅ เรียกด้วย positional arguments ทั้งหมด
         ProjectileNode(
             self,                 # owner
             self.rect.center,     # pos
@@ -103,7 +125,6 @@ class PlayerNode(NodeBase):
         """ไว้ให้ enemy ใช้ตอนโจมตี player (ตอนนี้ยังไม่ถูกเรียกใช้)."""
         self.stats.hp = max(0, self.stats.hp - result_damage)
         if self.stats.is_dead():
-            # TODO: emit event player died / ไป GameOverScene
             print("Player died!")
 
     # ---------- UPDATE ----------

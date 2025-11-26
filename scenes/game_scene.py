@@ -46,10 +46,12 @@ class GameScene(BaseScene):
                 if event.key == pygame.K_ESCAPE:
                     self.game.scene_manager.push_scene(PauseScene(self.game))
                 elif event.key == pygame.K_i:
-                    self.game.scene_manager.push_scene(InventoryScene(self.game))
+                    # ✅ ส่ง player เข้า InventoryScene ด้วย
+                    self.game.scene_manager.push_scene(InventoryScene(self.game, self.player))
                 elif event.key == pygame.K_SPACE:
                     # ยิง
                     self.player.shoot()
+
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
