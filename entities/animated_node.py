@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from typing import List
-
 import pygame
 
 from .node_base import NodeBase
@@ -18,7 +17,7 @@ class AnimatedNode(NodeBase):
     def __init__(
         self,
         frames: List[pygame.Surface],
-        frame_duration: float = 0.1,  # วินาทีต่อเฟรม
+        frame_duration: float = 0.1,
         loop: bool = True,
         *groups,
     ) -> None:
@@ -35,7 +34,6 @@ class AnimatedNode(NodeBase):
         self._frame_index = 0
         self.finished = False  # ถ้าไม่ loop แล้วเล่นจบ จะเป็น True
 
-        # ใช้เฟรมแรกเป็น image เริ่มต้น
         self.image = self.frames[0]
         self.rect = self.image.get_rect()
 
@@ -49,7 +47,11 @@ class AnimatedNode(NodeBase):
         reset: bool = True,
     ) -> None:
         """
-        ใช้เปลี่ยน animation ทั้งชุด เช่น จาก idle → run
+        ใช้เปลี่ยน animation ทั้งชุด เช่น จาก idle → walk
+
+        reset = True    : รีเซ็ตกลับเฟรม 0 เสมอ
+        reset = False   : พยายามรักษา index เดิม แต่ถ้าเกินความยาวใหม่
+                         จะถูก clamp กลับมาให้อยู่ในช่วง
         """
         if not frames:
             raise ValueError("set_frames() ต้องการ frames อย่างน้อย 1 รูป")
@@ -65,9 +67,19 @@ class AnimatedNode(NodeBase):
             self._frame_index = 0
             self._time_accumulator = 0.0
             self.finished = False
+        else:
+            # ถ้า index เดิมเลยขนาดเฟรมใหม่ ให้ clamp กลับมา
+            if self._frame_index >= len(self.frames):
+                self._frame_index = len(self.frames) - 1
+            if self._frame_index < 0:
+                self._frame_index = 0
 
-        # รักษาตำแหน่งเดิมของ rect
-        center = self.rect.center
+        # รักษาตำแหน่งเดิมของ rect ถ้ามีแล้ว
+        try:
+            center = self.rect.center
+        except AttributeError:
+            center = self.frames[0].get_rect().center
+
         self.image = self.frames[self._frame_index]
         self.rect = self.image.get_rect(center=center)
 
@@ -91,7 +103,11 @@ class AnimatedNode(NodeBase):
                     self.finished = True
                     break
 
-        center = self.rect.center
+        try:
+            center = self.rect.center
+        except AttributeError:
+            center = self.frames[0].get_rect().center
+
         self.image = self.frames[self._frame_index]
         self.rect = self.image.get_rect(center=center)
 

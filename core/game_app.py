@@ -25,7 +25,15 @@ class GameApp:
 
         # Core systems
         self.event_bus = EventBus()
-        self.resources = ResourceManager(base_path="assets")
+        
+        # กำหนด scale สำหรับ sprite กับ tile
+        self.resources = ResourceManager(
+            base_path="assets",
+            sprite_scale=0.12,      # scale ตัวละคร / enemy
+            tile_scale=1.0,         # tile ขนาดเดิม
+            projectile_scale=0.1,   # 👈 ธนูเล็กลงครึ่งหนึ่ง
+        )
+
         self.audio = AudioManager(self.resources)
         self.scene_manager = SceneManager(self)
 
