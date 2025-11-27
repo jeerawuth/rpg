@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pygame
 
-from .node_base import NodeBase
+from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
@@ -17,7 +17,7 @@ except ImportError:  # เผื่อคุณยังไม่ได้สร
     Equipment = None
 
 
-class PlayerNode(NodeBase):
+class PlayerNode(AnimatedNode):
     def __init__(
         self,
         game,
@@ -25,15 +25,25 @@ class PlayerNode(NodeBase):
         projectile_group: pygame.sprite.Group,
         *groups,
     ) -> None:
-        super().__init__(*groups)
+        # เตรียมเฟรมสำหรับ AnimatedNode (กราฟิกชั่วคราว 1 เฟรม)
+        radius = 16
+        base_image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(base_image, (240, 240, 240), (radius, radius), radius)
+        frames = [base_image]
+
+        # ❌ เดิม: super().__init__(frames, frame_duration=0.12, loop=True, *groups)
+        # ✅ แก้เป็นใช้ positional ทั้งหมด
+        super().__init__(frames, 0.12, True, *groups)
+
         self.game = game
         self.projectile_group = projectile_group
 
-        # กราฟิกชั่วคราว: วงกลมสีขาว
-        radius = 16
-        self.image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-        pygame.draw.circle(self.image, (240, 240, 240), (radius, radius), radius)
-        self.rect = self.image.get_rect(center=pos)
+        # ตั้งตำแหน่งเริ่มต้นให้ sprite
+        self.rect.center = pos
+
+        # --- COMBAT STATS ---
+        # (จากตรงนี้ลงไป ให้ใช้โค้ดเดิมของคุณต่อได้เลย)
+
 
         # --- COMBAT STATS ---
         self.stats = Stats(
@@ -166,3 +176,6 @@ class PlayerNode(NodeBase):
     def update(self, dt: float) -> None:
         self.status.update(dt)
         self._handle_input(dt)
+
+        # อัปเดตแอนิเมชันของ AnimatedNode
+        super().update(dt)

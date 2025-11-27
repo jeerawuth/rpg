@@ -3,20 +3,25 @@ from __future__ import annotations
 
 import pygame
 
-from .node_base import NodeBase
+from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, compute_damage, DamageResult
 from combat.status_effect_system import StatusEffectManager
 
 
-class EnemyNode(NodeBase):
+class EnemyNode(AnimatedNode):
     def __init__(self, game, pos: tuple[int, int], *groups) -> None:
-        super().__init__(*groups)
+        # เตรียมเฟรมสำหรับ AnimatedNode (กราฟิกชั่วคราว 1 เฟรม)
+        base_image = pygame.Surface((28, 28), pygame.SRCALPHA)
+        base_image.fill((200, 40, 40))
+        frames = [base_image]
+
+        # เรียก AnimatedNode.__init__
+        super().__init__(frames, 0.15, True, *groups)
+
         self.game = game
 
-        # กราฟิกชั่วคราว: สี่เหลี่ยมสีแดง
-        self.image = pygame.Surface((28, 28))
-        self.image.fill((200, 40, 40))
-        self.rect = self.image.get_rect(center=pos)
+        # ตั้งตำแหน่งเริ่มต้นให้ศัตรู
+        self.rect.center = pos
 
         # combat stats
         self.stats = Stats(
@@ -76,3 +81,5 @@ class EnemyNode(NodeBase):
     def update(self, dt: float) -> None:
         self.status.update(dt)
         self._patrol(dt)
+        # เรียกใช้ของ AnimatedNode
+        super().update(dt)
