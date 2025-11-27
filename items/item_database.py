@@ -8,44 +8,47 @@ from .item_base import ItemBase
 
 class ItemDatabase:
     def __init__(self) -> None:
-        # ตอนนี้ hardcode ไอเทมตัวอย่างไว้ก่อน
+        # เก็บ item_id -> ItemBase
         self._items: Dict[str, ItemBase] = {}
 
         self._register_defaults()
 
+    # ---------------- ลงทะเบียนไอเท็มเริ่มต้น ----------------
     def _register_defaults(self) -> None:
-        self.register(
-            ItemBase(
-                id="potion_small",
-                name="Small Potion",
-                description="Restore a small amount of HP.",
-                item_type="consumable",
-                max_stack=10,
-            )
+        # ตัวอย่าง potion เล็ก (เผื่อคุณใช้)
+        potion_small = ItemBase(
+            id="potion_small",
+            name="Small Potion",
+            description="ฟื้นฟู HP เล็กน้อย",
+            item_type="consumable",
+            max_stack=20,
+            icon_key="items/potion_small.png",   # คุณค่อยไปทำรูปตาม path นี้
         )
-        self.register(
-            ItemBase(
-                id="sword_basic",
-                name="Rusty Sword",
-                description="A basic, rusty sword. Better than nothing.",
-                item_type="weapon",
-                max_stack=1,
-            )
-        )
-        self.register(
-            ItemBase(
-                id="sword_iron",
-                name="Iron Sword",
-                description="A solid iron sword. Deals more damage.",
-                item_type="weapon",
-                max_stack=1,
-            )
-        )
+        self._items[potion_small.id] = potion_small
 
-    # ---------- CRUD ----------
-    def register(self, item: ItemBase) -> None:
-        self._items[item.id] = item
+        # ตัวอย่างดาบพื้นฐาน (เผื่อไว้)
+        sword_basic = ItemBase(
+            id="sword_basic",
+            name="Basic Sword",
+            description="ดาบพื้น ๆ สำหรับมือใหม่",
+            item_type="weapon",
+            max_stack=1,
+            icon_key="items/sword_basic.png",
+        )
+        self._items[sword_basic.id] = sword_basic
 
+        # 🔥 ไอเท็มเพิ่มพลังธนูที่คุณต้องการใช้
+        bow_power_1 = ItemBase(
+            id="bow_power_1",
+            name="Bow Power Lv.1",
+            description="เพิ่มพลังโจมตีของลูกธนูเล็กน้อย",
+            item_type="weapon",
+            max_stack=1,
+            icon_key="items/bow_power_1.png",   # ไปวางรูปตาม path นี้
+        )
+        self._items[bow_power_1.id] = bow_power_1
+
+    # ---------------- API ใช้งานจากที่อื่น ----------------
     def get(self, item_id: str) -> ItemBase:
         return self._items[item_id]
 

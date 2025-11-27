@@ -31,7 +31,7 @@ class GameApp:
             base_path="assets",
             sprite_scale=0.12,      # scale ตัวละคร / enemy
             tile_scale=1.0,         # tile ขนาดเดิม
-            projectile_scale=0.1,   # 👈 ธนูเล็กลงครึ่งหนึ่ง
+            projectile_scale=0.1,   # ธนูเล็กลงตามสเกล
         )
 
         self.audio = AudioManager(self.resources)

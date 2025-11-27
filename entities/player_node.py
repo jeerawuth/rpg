@@ -229,17 +229,17 @@ class PlayerNode(AnimatedNode):
 
     # ==================== COMBAT ====================
     def _get_current_weapon_base_damage(self) -> int:
-        """ตัวอย่างง่าย ๆ: ถ้ามี equipment ก็ให้ base สูงขึ้นหน่อย"""
+        """ดึง base damage ของอาวุธในมือหลัก (มีผลกับธนูที่ยิง)"""
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
             if weapon and weapon.item_type == "weapon":
-                if weapon.id == "sword_basic":
+                if weapon.id == "bow_power_1":
+                    return 25   # ธนูแรงขึ้น
+                elif weapon.id == "sword_basic":
                     return 15
-                elif weapon.id == "sword_iron":
-                    return 25
-                else:
-                    return 18
-        return 10  # ชกมือเปล่า
+                # else สายอื่น ๆ
+        return 10  # ไม่มีอาวุธ ถือมือเปล่า
+
 
     # ==================== ยิง ====================
     def shoot(self) -> None:
@@ -274,9 +274,6 @@ class PlayerNode(AnimatedNode):
 
         # ตั้งคูลดาวน์ใหม่หลังยิง
         self.shoot_timer = self.shoot_cooldown
-
-
-
 
 
     def take_damage(self, attacker_stats: Stats, result_damage: int) -> None:
