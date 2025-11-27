@@ -41,6 +41,10 @@ class PlayerNode(AnimatedNode):
         # assets/graphics/images/player/{state}/{state}_{direction}_01.png
         self._load_animations()
 
+        # ---------- SHOOT COOLDOWN ----------
+        self.shoot_cooldown = 0.8   # หน่วง 0.8 วินาทีก่อนยิงดอกใหม่ (ปรับได้)
+        self.shoot_timer = 0.0      # ตัวนับเวลาคูลดาวน์
+
         # เลือกเฟรมเริ่มต้น (idle/down ถ้ามี, ไม่งั้นใช้ชุดแรกใน animations หรือ dummy)
         if ("idle", "down") in self.animations:
             start_frames = self.animations[("idle", "down")]
@@ -239,7 +243,10 @@ class PlayerNode(AnimatedNode):
 
     # ==================== ยิง ====================
     def shoot(self) -> None:
-        """ยิง projectile ไปในทิศทาง self.facing"""
+        # ถ้ายังไม่พ้นคูลดาวน์ ห้ามยิง
+        if self.shoot_timer > 0:
+            return
+
         from .projectile_node import ProjectileNode
 
         direction = self.facing
@@ -248,23 +255,26 @@ class PlayerNode(AnimatedNode):
 
         base_damage = self._get_current_weapon_base_damage()
 
-        # ตรงกับ damage_system.DamagePacket
         packet = DamagePacket(
             base=base_damage,
             damage_type="physical",
-            scaling_attack=0.8,   # เอาพลังโจมตีมาช่วยคิดบางส่วน
+            scaling_attack=0.8,
         )
 
         ProjectileNode(
-            self,                 # owner (PlayerNode)
-            self.rect.center,     # pos
-            direction,            # direction (Vector2)
-            450,                  # speed (pixels/sec) ปรับได้
-            packet,               # damage_packet
-            1.5,                  # lifetime (วินาที ก่อนหายไปเอง)
+            self,
+            self.rect.center,
+            direction,
+            450,
+            packet,
+            1.5,
             self.projectile_group,
             self.game.all_sprites,
         )
+
+        # ตั้งคูลดาวน์ใหม่หลังยิง
+        self.shoot_timer = self.shoot_cooldown
+
 
 
 
@@ -279,13 +289,16 @@ class PlayerNode(AnimatedNode):
         # อัปเดตสถานะต่าง ๆ (buff/debuff ฯลฯ)
         self.status.update(dt)
 
-        # ควบคุมการเคลื่อนที่ / อินพุต
-        self._handle_input(dt)
+        # ลดตัวนับเวลาคูลดาวน์ยิงธนู
+        if self.shoot_timer > 0:
+            self.shoot_timer -= dt
+            if self.shoot_timer < 0:
+                self.shoot_timer = 0
 
-        # อัปเดต state + direction สำหรับแอนิเมชัน
+        # อินพุต + การเคลื่อนที่ + แอนิเมชัน
+        self._handle_input(dt)
         self._update_animation_state()
         self._apply_animation()
-
-        # ให้ AnimatedNode เปลี่ยนเฟรมตามเวลา
         super().update(dt)
+
 
