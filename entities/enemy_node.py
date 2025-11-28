@@ -20,6 +20,11 @@ class EnemyNode(AnimatedNode):
 
         self.game = game
 
+        # ---------- SFX ----------
+        # ใช้ ResourceManager เหมือน player_node
+        self.sfx_hit = self.game.resources.load_sound("sfx/enemy_hit.wav")
+        self.sfx_hit.set_volume(0.7)
+
         # ตั้งตำแหน่งเริ่มต้นให้ศัตรู
         self.rect.center = pos
 
@@ -58,6 +63,11 @@ class EnemyNode(AnimatedNode):
         - คำนวนดาเมจ
         - เช็คตาย
         """
+
+        # เล่นเสียงตอนศัตรูโดนโจมตี
+        if hasattr(self, "sfx_hit"):
+            self.sfx_hit.play()
+            
         # ถ้ามี debuff "damage_taken" ก็ใช้ปรับ multiplier ใน packet ได้
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
