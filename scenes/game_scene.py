@@ -1,5 +1,6 @@
 # scenes/game_scene.py
 from __future__ import annotations
+import random
 
 import pygame
 
@@ -49,9 +50,22 @@ class GameScene(BaseScene):
             self.all_sprites,
         )
 
+        # # ---------- ENEMIES ----------
+        # for pos in self.level_data.enemy_spawns:
+        #     EnemyNode(self.game, pos, self.all_sprites, self.enemies, sprite_id="slime_green")
         # ---------- ENEMIES ----------
         for pos in self.level_data.enemy_spawns:
-            EnemyNode(self.game, pos, self.all_sprites, self.enemies)
+            # สุ่มชนิดศัตรูในแต่ละตำแหน่ง
+            sprite_id = random.choice(["goblin", "slime_green"])
+
+            EnemyNode(
+                self.game,
+                pos,
+                self.all_sprites,
+                self.enemies,
+                sprite_id=sprite_id,
+            )
+
 
         # ---------- ITEMS (ตัวอย่าง: ไอเท็มเพิ่มพลังธนู) ----------
         # สมมติ item_id ในฐานข้อมูลคือ "bow_power_1"
