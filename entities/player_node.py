@@ -7,6 +7,7 @@ from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, DamageResult, compute_damage
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
+from .projectile_node import ProjectileNode
 
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
 try:
@@ -27,6 +28,15 @@ class PlayerNode(AnimatedNode):
     ) -> None:
         self.game = game
         self.projectile_group = projectile_group
+
+        # ---------- SFX (ใช้ ResourceManager โหลดเสียง) ----------
+        # จะ map เป็น assets/sounds/sfx/slash.wav และ assets/sounds/sfx/bow_shoot.wav
+        self.sfx_slash = self.game.resources.load_sound("sfx/slash.wav")
+        self.sfx_bow_shoot = self.game.resources.load_sound("sfx/bow_shoot.wav")
+
+        # ปรับระดับเสียงตามใจ
+        self.sfx_slash.set_volume(0.7)
+        self.sfx_bow_shoot.set_volume(0.7)
 
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
@@ -303,6 +313,10 @@ class PlayerNode(AnimatedNode):
         โจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
         ใช้ DamagePacket + enemy.take_hit() เหมือน projectile
         """
+
+        # เล่นเสียงฟัน
+        if hasattr(self, "sfx_slash"):
+            self.sfx_slash.play()
         # ตั้ง state เป็น attack เพื่อเล่น animation ถ้ามี
         self.state = "attack"
         # ล็อกสถานะโจมตีช่วงสั้น ๆ เพื่อให้เห็นท่าฟันครบ
@@ -345,8 +359,11 @@ class PlayerNode(AnimatedNode):
         self.shoot_timer = self.shoot_cooldown
 
     def _shoot_projectile(self) -> None:
-        from .projectile_node import ProjectileNode
-
+        
+        
+        # เล่นเสียงยิงธนู
+        if hasattr(self, "sfx_bow_shoot"):
+            self.sfx_bow_shoot.play()
         direction = self.facing
         if direction.length_squared() == 0:
             direction = pygame.Vector2(1, 0)
