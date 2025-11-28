@@ -143,18 +143,21 @@ class GameScene(BaseScene):
         for item_node in hits:
             inv = getattr(self.player, "inventory", None)
             if inv is None:
-                # ถ้า player ยังไม่มีระบบ inventory ก็แค่ลบ item ออกไปเฉย ๆ
                 continue
 
             leftover = inv.add_item(item_node.item_id, item_node.amount)
 
+            # 🔊 เล่นเสียงเก็บไอเท็ม (ใช้ slash.wav ร่วมกัน)
+            if hasattr(self.player, "sfx_item_pickup"):
+                self.player.sfx_item_pickup.play()
+            else:
+                # กันเหนียว ถ้าไม่มี ให้ลองใช้สกิลฟันแทน
+                if hasattr(self.player, "sfx_slash"):
+                    self.player.sfx_slash.play()
+
             if leftover > 0:
-                # ถ้าเก็บไม่หมด (กระเป๋าเต็ม) จะทำยังไงต่อ อยู่ที่ดีไซน์คุณ
-                # ตัวอย่าง: spawn item กลับลงพื้นใหม่
                 print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
-                # ถ้าอยาก drop กลับลงพื้นจริง ๆ:
-                # ItemNode(self.game, item_node.rect.center, item_node.item_id, leftover,
-                #          self.all_sprites, self.items)
+
 
 
     # ---------- DRAW ----------

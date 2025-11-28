@@ -30,13 +30,17 @@ class PlayerNode(AnimatedNode):
         self.projectile_group = projectile_group
 
         # ---------- SFX (ใช้ ResourceManager โหลดเสียง) ----------
-        # จะ map เป็น assets/sounds/sfx/slash.wav และ assets/sounds/sfx/bow_shoot.wav
         self.sfx_slash = self.game.resources.load_sound("sfx/slash.wav")
         self.sfx_bow_shoot = self.game.resources.load_sound("sfx/bow_shoot.wav")
 
-        # ปรับระดับเสียงตามใจ
+        # ใช้ slash.wav เป็นเสียงเก็บไอเท็มด้วย
+        self.sfx_item_pickup = self.sfx_slash
+
         self.sfx_slash.set_volume(0.7)
         self.sfx_bow_shoot.set_volume(0.7)
+        # ถ้าอยากให้ตอนเก็บของเบากว่านิดนึงก็ได้ เช่น:
+        # self.sfx_item_pickup.set_volume(0.5)
+
 
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
