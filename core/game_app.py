@@ -29,10 +29,19 @@ class GameApp:
         # กำหนด scale สำหรับ sprite กับ tile
         self.resources = ResourceManager(
             base_path="assets",
-            sprite_scale=0.12,      # scale ตัวละคร / enemy
-            tile_scale=1.0,         # tile ขนาดเดิม
-            projectile_scale=0.1,   # ธนูเล็กลงตามสเกล
+            sprite_scale=0.12,   # ขนาดตัวละคร / enemy
+            tile_scale=1.0,      # ขนาด tile
+            projectile_scale=0.1,  # ลูกธนู
+            item_scale=0.1,        # ค่าเริ่มต้นของ items ทุกชนิด
+            item_scale_overrides={
+                # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
+                "items/bow_power": 0.1,
+
+                # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
+                "items/shield": 0.05,
+            },
         )
+
 
         self.audio = AudioManager(self.resources)
         self.scene_manager = SceneManager(self)

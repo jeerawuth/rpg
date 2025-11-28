@@ -64,6 +64,16 @@ class GameScene(BaseScene):
             self.items,
         )
 
+        # สมมติ item_id ในฐานข้อมูลคือ "bow_power_1"
+        ItemNode(
+            self.game,
+            (self.player.rect.centerx + 100, self.player.rect.centery),
+            "shield",             # item_id ต้องมีอยู่ใน ITEM_DB
+            1,                    # จำนวน
+            self.all_sprites,
+            self.items,
+        )
+
         # ---------- CAMERA ----------
         self.camera = Camera(
             world_width=self.tilemap.pixel_width,

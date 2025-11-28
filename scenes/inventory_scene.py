@@ -17,45 +17,76 @@ class InventoryScene(BaseScene):
 
         self.selected_index = 0
 
+    # ----------------- EVENTS -----------------
     def handle_events(self, events) -> None:
         for event in events:
             if event.type == pygame.KEYDOWN:
+                # ปิดหน้าต่าง inventory
                 if event.key in (pygame.K_ESCAPE, pygame.K_i):
                     self.game.scene_manager.pop_scene()
 
+                # เลื่อนช่องเลือก
                 elif event.key == pygame.K_UP:
                     self.selected_index = max(0, self.selected_index - 1)
                 elif event.key == pygame.K_DOWN:
                     inv_size = self.player.inventory.size
                     self.selected_index = min(inv_size - 1, self.selected_index + 1)
 
+                # กด ENTER เพื่อ equip
                 elif event.key == pygame.K_RETURN:
-                    # กด ENTER เพื่อ equip weapon (ถ้าเป็น weapon)
-                    equipped = self.player.equipment.equip_from_inventory(
-                        self.player.inventory,
-                        self.selected_index,
-                        slot="main_hand",
-                    )
-                    if equipped:
-                        print("Equipped main-hand weapon from inventory slot", self.selected_index)
+                    self._handle_equip_selected()
 
+    def _handle_equip_selected(self) -> None:
+        """เลือกช่อง inventory ปัจจุบัน แล้วพยายาม equip ตามประเภทของไอเท็ม"""
+
+        inv = self.player.inventory
+        eq = self.player.equipment
+
+        if inv is None or eq is None:
+            return
+
+        stack = inv.get(self.selected_index)
+        if stack is None:
+            return
+
+        item = stack.item
+
+        # ตัดสินใจว่าจะใส่ช่องไหนตามประเภทของไอเท็ม
+        if item.item_type == "weapon":
+            slot = "main_hand"
+        elif item.item_type == "armor":
+            # armor (เช่น shield) ให้ใส่ช่อง armor
+            slot = "armor"
+        else:
+            # ยังไม่รองรับการ equip ไอเท็มประเภทอื่น (consumable, misc)
+            print(f"Item '{item.name}' (type={item.item_type}) equip ไม่ได้")
+            return
+
+        equipped = eq.equip_from_inventory(inv, self.selected_index, slot=slot)
+        if equipped:
+            print(f"Equipped {item.name} -> slot {slot}")
+        else:
+            print(f"Equip {item.name} ล้มเหลว (slot={slot})")
+
+    # ----------------- UPDATE / DRAW -----------------
     def update(self, dt: float) -> None:
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        # ทำ overlay ทึบหน่อย
-        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 220))
-        surface.blit(overlay, (0, 0))
-
         w, h = surface.get_size()
 
-        # Title
-        title = self.title_font.render("Inventory", True, (255, 255, 255))
-        surface.blit(title, title.get_rect(center=(w // 2, 60)))
+        # พื้นหลังทึบหน่อย
+        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        surface.blit(overlay, (0, 0))
 
-        # ข้อความช่วย
-        hint = self.font.render("UP/DOWN: Move  |  ENTER: Equip main-hand  |  I/ESC: Close", True, (200, 200, 200))
+        # Title
+        title_surf = self.title_font.render("Inventory", True, (255, 255, 255))
+        surface.blit(title_surf, title_surf.get_rect(center=(w // 2, 40)))
+
+        # Hint: อธิบายการกดปุ่ม
+        hint_text = "UP/DOWN: Move  |  ENTER: Equip (weapon→main, armor→armor)  |  I/ESC: Close"
+        hint = self.font.render(hint_text, True, (200, 200, 200))
         surface.blit(hint, hint.get_rect(center=(w // 2, 100)))
 
         # แสดงไอเทมเป็น list
@@ -82,12 +113,27 @@ class InventoryScene(BaseScene):
             t_surf = self.font.render(text, True, color)
             surface.blit(t_surf, (start_x, start_y + i * line_h))
 
-        # แสดงอาวุธที่ equip อยู่
-        equipped = self.player.equipment.get_item("main_hand")
-        if equipped:
-            equip_txt = f"Main-hand: {equipped.name}"
-        else:
-            equip_txt = "Main-hand: (none)"
+        # ------------ แสดงของที่ equip อยู่ ------------
+        eq = self.player.equipment
 
-        equip_surf = self.font.render(equip_txt, True, (255, 255, 0))
-        surface.blit(equip_surf, (start_x, start_y + self.player.inventory.size * line_h + 20))
+        # main-hand (weapon)
+        main_weapon = eq.get_item("main_hand")
+        if main_weapon:
+            main_txt = f"Main-hand: {main_weapon.name}"
+        else:
+            main_txt = "Main-hand: (none)"
+
+        # armor (shield / เกราะ)
+        armor_item = eq.get_item("armor")
+        if armor_item:
+            armor_txt = f"Armor: {armor_item.name}"
+        else:
+            armor_txt = "Armor: (none)"
+
+        base_y = start_y + self.player.inventory.size * line_h + 20
+
+        main_surf = self.font.render(main_txt, True, (255, 255, 0))
+        armor_surf = self.font.render(armor_txt, True, (255, 255, 0))
+
+        surface.blit(main_surf, (start_x, base_y))
+        surface.blit(armor_surf, (start_x, base_y + 28))
