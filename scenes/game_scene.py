@@ -163,7 +163,7 @@ class GameScene(BaseScene):
         # HUD (วาดแบบ fixed screen, ไม่ต้องใช้ offset)
         lines = [
             "Game Scene (Camera + Tilemap + Combat)",
-            "WASD - Move | SPACE - Shoot | I - Inventory",
+            "WASD - Move | SPACE - Attack | I - Inventory",
             f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
             f"Enemies: {len(self.enemies.sprites())}",
         ]

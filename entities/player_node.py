@@ -52,20 +52,12 @@ class PlayerNode(AnimatedNode):
             pygame.draw.circle(img, (240, 240, 240), (radius, radius), radius)
             start_frames = [img]
 
-        # เรียก AnimatedNode ด้วย args แบบ positional (กัน error frame_duration ซ้ำ)
         super().__init__(start_frames, 0.12, True, *groups)
 
         # ตั้งตำแหน่งเริ่มต้น
         self.rect.center = pos
 
         # ---------- Combat stats (RPG style) ----------
-        # ฟิลด์หลักที่เกม RPG นิยมใช้:
-        # - max_hp, hp
-        # - attack (กายภาพ)
-        # - magic  (เวท)
-        # - armor  (เกราะ ลดดาเมจกายภาพ)
-        # - resistances: dict[type, percent] (เช่น {"fire": 0.25})
-        # - crit_chance, crit_multiplier
         self.stats = Stats(
             max_hp=100,
             hp=100,
@@ -116,6 +108,9 @@ class PlayerNode(AnimatedNode):
         # ---------- Shoot cooldown ----------
         self.shoot_cooldown = 0.8
         self.shoot_timer = 0.0
+
+        # ---------- Attack animation timer ----------
+        self.attack_timer: float = 0.0
 
     # ============================================================
     # Animation loading
@@ -168,10 +163,10 @@ class PlayerNode(AnimatedNode):
         # restore HP ตามสัดส่วน
         self.stats.hp = min(self.stats.max_hp, self.stats.max_hp * hp_ratio)
 
-        if getattr(self, "equipment", None) is None:
+        if self.equipment is None:
             return
 
-        # ----- main-hand (weapon) -----
+        # ----- weapon (main_hand) -----
         weapon = self.equipment.get_item("main_hand")
         if weapon:
             if weapon.id == "sword_basic":
@@ -191,7 +186,6 @@ class PlayerNode(AnimatedNode):
         if armor_item:
             if armor_item.id == "shield":
                 self.stats.armor += 6
-                # ถ้าต้องการเพิ่ม resistances เพิ่มได้ เช่น:
                 # self.stats.resistances["physical"] = \
                 #     self.stats.resistances.get("physical", 0.0) + 0.1
 
@@ -224,21 +218,59 @@ class PlayerNode(AnimatedNode):
         else:
             self.velocity.update(0, 0)
 
-        # ย้ายตำแหน่งแบบง่าย ๆ (ถ้าคุณมีระบบ collision แยกแล้ว ค่อยเอาไปผูก)
-        self.rect.x += int(self.velocity.x * dt)
-        self.rect.y += int(self.velocity.y * dt)
+        # ใช้ระบบชนกำแพง แทนการเลื่อนตรง ๆ
+        dx = self.velocity.x * dt
+        dy = self.velocity.y * dt
+        self._move_and_collide(dx, dy)
+
+
+    def _move_and_collide(self, dx: float, dy: float) -> None:
+        """
+        เลื่อนตัวละครตาม dx, dy แล้วเช็คชนกับ self.collision_rects
+        ใช้การแก้ชนแบบทีละแกน (horizontal -> vertical)
+        """
+        # เผื่อกรณียังไม่ได้ถูกเซ็ตจาก GameScene
+        walls = getattr(self, "collision_rects", []) or []
+
+        # ----- แกน X -----
+        if dx != 0:
+            self.rect.x += int(dx)
+            for wall in walls:
+                if self.rect.colliderect(wall):
+                    if dx > 0:   # เดินมาทางขวา ชนกำแพงด้านขวา
+                        self.rect.right = wall.left
+                    else:        # เดินมาทางซ้าย
+                        self.rect.left = wall.right
+
+        # ----- แกน Y -----
+        if dy != 0:
+            self.rect.y += int(dy)
+            for wall in walls:
+                if self.rect.colliderect(wall):
+                    if dy > 0:   # เดินลง
+                        self.rect.bottom = wall.top
+                    else:        # เดินขึ้น
+                        self.rect.top = wall.bottom
+
 
     def _update_animation_state(self) -> None:
-        if self.velocity.length_squared() > 0:
-            self.state = "walk"
-        else:
-            self.state = "idle"
-
+        # อัปเดตทิศทางพื้นฐานจาก vector การหัน
         x, y = self.facing.x, self.facing.y
         if abs(x) > abs(y):
             self.direction = "right" if x > 0 else "left"
         else:
             self.direction = "down" if y >= 0 else "up"
+
+        # ถ้ายังอยู่ในช่วงเล่น animation โจมตี และมีเฟรม attack อยู่ ให้ล็อก state = "attack"
+        if getattr(self, "attack_timer", 0.0) > 0 and ("attack", self.direction) in self.animations:
+            self.state = "attack"
+            return
+
+        # ปกติ: เดิน / ยืน
+        if self.velocity.length_squared() > 0:
+            self.state = "walk"
+        else:
+            self.state = "idle"
 
     def _apply_animation(self) -> None:
         frames = self.animations.get((self.state, self.direction))
@@ -252,7 +284,7 @@ class PlayerNode(AnimatedNode):
     # ============================================================
     def _get_current_weapon_base_damage(self) -> int:
         """
-        base damage สำหรับใช้ยิงธนู
+        base damage สำหรับใช้ยิงธนู/ฟัน
         - มือเปล่า      -> 10
         - sword_basic   -> 15
         - bow_power_1   -> 25
@@ -266,10 +298,53 @@ class PlayerNode(AnimatedNode):
                     return 15
         return 10
 
-    def shoot(self) -> None:
-        if self.shoot_timer > 0:
-            return
+    def _melee_slash(self) -> None:
+        """
+        โจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
+        ใช้ DamagePacket + enemy.take_hit() เหมือน projectile
+        """
+        # ตั้ง state เป็น attack เพื่อเล่น animation ถ้ามี
+        self.state = "attack"
+        # ล็อกสถานะโจมตีช่วงสั้น ๆ เพื่อให้เห็นท่าฟันครบ
+        self.attack_timer = 0.25
 
+        base_damage = self._get_current_weapon_base_damage()
+
+        packet = DamagePacket(
+            base=base_damage,
+            damage_type="physical",
+            scaling_attack=1.0,
+        )
+
+        # สร้าง hitbox ด้านหน้าตัวละคร
+        attack_rect = self.rect.copy()
+        RANGE = 32  # ระยะเอื้อมของดาบ
+
+        if abs(self.facing.x) > abs(self.facing.y):
+            # ซ้าย–ขวา
+            if self.facing.x > 0:
+                attack_rect.x += attack_rect.width  # ขวา
+            else:
+                attack_rect.x -= RANGE              # ซ้าย
+        else:
+            # บน–ล่าง
+            if self.facing.y > 0:
+                attack_rect.y += attack_rect.height  # ล่าง
+            else:
+                attack_rect.y -= RANGE               # บน
+
+        # ขยายกรอบให้ใหญ่ขึ้นหน่อย
+        attack_rect.inflate_ip(10, 10)
+
+        # เช็คทุก enemy ว่าโดนฟันไหม
+        for enemy in self.game.enemies.sprites():
+            if attack_rect.colliderect(enemy.rect):
+                enemy.take_hit(self.stats, packet)
+
+        # cooldown โจมตี
+        self.shoot_timer = self.shoot_cooldown
+
+    def _shoot_projectile(self) -> None:
         from .projectile_node import ProjectileNode
 
         direction = self.facing
@@ -296,6 +371,22 @@ class PlayerNode(AnimatedNode):
         )
 
         self.shoot_timer = self.shoot_cooldown
+
+    def shoot(self) -> None:
+        if self.shoot_timer > 0:
+            return
+
+        # ดูว่า main_hand เป็นอาวุธแบบไหน
+        weapon = None
+        if getattr(self, "equipment", None) is not None:
+            weapon = self.equipment.get_item("main_hand")
+
+        # ถ้ามี bow_xxx อยู่ที่มือหลัก -> ยิงระยะไกล
+        if weapon and weapon.item_type == "weapon" and weapon.id.startswith("bow_"):
+            self._shoot_projectile()
+        else:
+            # ค่าเริ่มต้น = ฟันระยะใกล้ (ดาบ / มือเปล่า)
+            self._melee_slash()
 
     def take_hit(self, attacker_stats: Stats, damage_packet: DamagePacket) -> DamageResult:
         """
@@ -338,6 +429,12 @@ class PlayerNode(AnimatedNode):
             self.shoot_timer -= dt
             if self.shoot_timer < 0:
                 self.shoot_timer = 0
+
+        # ลดเวลาการแสดงท่าโจมตี (attack animation)
+        if getattr(self, "attack_timer", 0.0) > 0:
+            self.attack_timer -= dt
+            if self.attack_timer < 0:
+                self.attack_timer = 0.0
 
         # อินพุต + การเคลื่อนที่ + แอนิเมชัน
         self._handle_input(dt)
