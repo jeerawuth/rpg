@@ -10,15 +10,23 @@ from combat.status_effect_system import StatusEffectManager
 
 class EnemyNode(AnimatedNode):
     def __init__(self, game, pos: tuple[int, int], *groups) -> None:
-        # เตรียมเฟรมสำหรับ AnimatedNode (กราฟิกชั่วคราว 1 เฟรม)
-        base_image = pygame.Surface((28, 28), pygame.SRCALPHA)
-        base_image.fill((200, 40, 40))
-        frames = [base_image]
-
-        # เรียก AnimatedNode.__init__
-        super().__init__(frames, 0.15, True, *groups)
-
         self.game = game
+
+        # ---------- โหลดเฟรมศัตรูจากไฟล์ ----------
+        # พยายามโหลดตาม pattern:
+        #   assets/graphics/images/enemy/enemy_01.png
+        #   assets/graphics/images/enemy/enemy_02.png
+        #   ...
+        frames = self._load_sprite_frames()
+
+        # ถ้าโหลดไม่ได้สักรูป ให้ใช้กราฟิกชั่วคราว (สี่เหลี่ยมแดง) กันเกมพัง
+        if not frames:
+            base_image = pygame.Surface((28, 28), pygame.SRCALPHA)
+            base_image.fill((200, 40, 40))
+            frames = [base_image]
+
+        # เรียก AnimatedNode.__init__ ด้วยเฟรมที่โหลดมา
+        super().__init__(frames, 0.15, True, *groups)
 
         # ---------- SFX ----------
         # ใช้ ResourceManager เหมือน player_node
@@ -49,6 +57,28 @@ class EnemyNode(AnimatedNode):
         self.move_range = 80
         self._origin_x = pos[0]
 
+    # ---------- LOAD SPRITE FRAMES ----------
+    def _load_sprite_frames(self) -> list[pygame.Surface]:
+        """
+        โหลดเฟรมศัตรูจาก resource_manager ตาม pattern:
+        enemy/enemy_01.png, enemy/enemy_02.png, ...
+        """
+        frames: list[pygame.Surface] = []
+        index = 1
+
+        while True:
+            # relative_path จะถูก map เป็น:
+            # assets/graphics/images/enemy/enemy_01.png
+            rel_path = f"enemy/enemy_{index:02d}.png"
+            try:
+                surf = self.game.resources.load_image(rel_path)
+            except Exception:
+                break
+            frames.append(surf)
+            index += 1
+
+        return frames
+
     # ---------- AI / MOVE ----------
     def _patrol(self, dt: float) -> None:
         self.rect.x += int(self.direction * self.speed * dt)
@@ -57,21 +87,15 @@ class EnemyNode(AnimatedNode):
 
     # ---------- COMBAT ----------
     def take_hit(self, attacker_stats: Stats, damage_packet: DamagePacket) -> DamageResult:
-        """
-        โดนโจมตีจาก attacker
-        - apply status modifier (ถ้าต้องใช้)
-        - คำนวนดาเมจ
-        - เช็คตาย
-        """
-
         # เล่นเสียงตอนศัตรูโดนโจมตี
         if hasattr(self, "sfx_hit"):
             self.sfx_hit.play()
-            
-        # ถ้ามี debuff "damage_taken" ก็ใช้ปรับ multiplier ใน packet ได้
+
+        # ปรับ multiplier จาก status (ถ้ามี debuff เพิ่มดาเมจ)
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
 
+        # compute_damage จะคำนวณดาเมจ + หัก HP ใน self.stats.hp ให้เรียบร้อยแล้ว
         result = compute_damage(attacker_stats, self.stats, damage_packet)
 
         print(
@@ -80,6 +104,7 @@ class EnemyNode(AnimatedNode):
             f"HP: {self.stats.hp}/{self.stats.max_hp}"
         )
 
+        # ใช้ result.killed จาก compute_damage พอ ไม่ต้องเช็ค/หักเองเพิ่ม
         if result.killed:
             print("Enemy died!")
             self.kill()
@@ -87,9 +112,10 @@ class EnemyNode(AnimatedNode):
 
         return result
 
+
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
         self.status.update(dt)
         self._patrol(dt)
-        # เรียกใช้ของ AnimatedNode
+        # เรียกใช้ของ AnimatedNode (จะเดินอนิเมชันจาก frames ที่เราโหลดมา)
         super().update(dt)

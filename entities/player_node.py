@@ -405,20 +405,12 @@ class PlayerNode(AnimatedNode):
             # ค่าเริ่มต้น = ฟันระยะใกล้ (ดาบ / มือเปล่า)
             self._melee_slash()
 
+    # เมื่อโดนโจมตี
     def take_hit(self, attacker_stats: Stats, damage_packet: DamagePacket) -> DamageResult:
-        """
-        ถูกโจมตี 1 ครั้ง:
-        - ใช้ status modifier
-        - ใช้ compute_damage ซึ่งอ่านค่า armor, resistances, crit ฯลฯ จาก self.stats
-        """
-        # เพิ่ม multiplier จาก debuff (ถ้ามี)
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
 
         result = compute_damage(attacker_stats, self.stats, damage_packet)
-
-        # อัปเดต HP
-        self.stats.hp = max(0.0, self.stats.hp - result.final_damage)
 
         print(
             f"[Player] took {result.final_damage} dmg "
@@ -426,13 +418,11 @@ class PlayerNode(AnimatedNode):
             f"HP: {self.stats.hp}/{self.stats.max_hp}"
         )
 
-        if self.stats.hp <= 0 and not result.killed:
-            result.killed = True
-
         if result.killed:
             print("[Player] died")
 
         return result
+
 
     # ============================================================
     # Update
