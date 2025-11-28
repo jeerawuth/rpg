@@ -50,21 +50,19 @@ class GameScene(BaseScene):
             self.all_sprites,
         )
 
-        # # ---------- ENEMIES ----------
-        # for pos in self.level_data.enemy_spawns:
-        #     EnemyNode(self.game, pos, self.all_sprites, self.enemies, sprite_id="slime_green")
         # ---------- ENEMIES ----------
-        for pos in self.level_data.enemy_spawns:
-            # สุ่มชนิดศัตรูในแต่ละตำแหน่ง
-            sprite_id = random.choice(["goblin", "slime_green"])
+        for spawn in self.level_data.enemy_spawns:
+            enemy_type = spawn["type"]          # "goblin" หรือ "slime_green"
+            pos = tuple(spawn["pos"])           # [x, y] -> (x, y)
 
             EnemyNode(
                 self.game,
                 pos,
                 self.all_sprites,
                 self.enemies,
-                sprite_id=sprite_id,
+                enemy_id=enemy_type,            # ให้ไป lookup ใน enemy_config.py
             )
+
 
 
         # ---------- ITEMS (ตัวอย่าง: ไอเท็มเพิ่มพลังธนู) ----------

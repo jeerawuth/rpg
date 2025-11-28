@@ -6,6 +6,7 @@ import pygame
 from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, compute_damage, DamageResult
 from combat.status_effect_system import StatusEffectManager
+from config.enemy_config import ENEMY_CONFIG
 
 
 class EnemyNode(AnimatedNode):
@@ -14,10 +15,18 @@ class EnemyNode(AnimatedNode):
         game,
         pos: tuple[int, int],
         *groups,
-        sprite_id: str = "goblin",  # enemy/goblin หรือ enemy/slime_green
+        enemy_id: str = "goblin",  # ใช้ enemy_id มาจาก level01.json
     ) -> None:
         self.game = game
-        self.sprite_id = sprite_id
+        self.enemy_id = enemy_id
+
+        # ---------- อ่าน config ตาม enemy_id ----------
+        cfg = ENEMY_CONFIG.get(enemy_id)
+        if cfg is None:
+            raise ValueError(f"Unknown enemy_id: {enemy_id}")
+
+        # โฟลเดอร์สไปรต์ (เช่น goblin, slime_green)
+        self.sprite_id: str = cfg.get("sprite_id", enemy_id)
 
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
@@ -51,30 +60,35 @@ class EnemyNode(AnimatedNode):
         # ---------- Position ----------
         self.rect.center = pos
 
-        # ---------- Combat stats ----------
+        # ---------- Combat stats จาก ENEMY_CONFIG ----------
+        base_stats: Stats = cfg["stats"]
+        # ทำสำเนา ไม่ใช้ object เดียวกันทุกตัว
         self.stats = Stats(
-            max_hp=60,
-            hp=60,
-            attack=10,
-            magic=0,
-            armor=3,
-            resistances={"fire": 0.1},
-            crit_chance=0.05,
-            crit_multiplier=1.5,
+            max_hp=base_stats.max_hp,
+            hp=base_stats.hp,
+            attack=base_stats.attack,
+            magic=base_stats.magic,
+            armor=base_stats.armor,
+            resistances=dict(base_stats.resistances),
+            crit_chance=base_stats.crit_chance,
+            crit_multiplier=base_stats.crit_multiplier,
         )
 
         self.status = StatusEffectManager(self)
 
         # ---------- AI / Movement ----------
-        self.speed = 80
-        self.patrol_dir = 1       # 1 = เดินขวา, -1 = เดินซ้าย
-        self.move_range = 80
-        self._origin_x = pos[0]
+        self.speed: float = cfg.get("speed", 60)
+        self.patrol_dir: int = 1       # 1 = เดินขวา, -1 = เดินซ้าย
+        self.move_range: float = cfg.get("move_range", 80)
+        self._origin_x: int = pos[0]
 
         # ---------- Timers ----------
         self.hurt_timer: float = 0.0
         self.is_dead: bool = False
         self.death_timer: float = 0.0
+
+        # ค่า XP ที่จะดรอปตอนตาย (ตอนนี้ยังไม่ใช้ แต่อาจใช้ในระบบเลเวลภายหลัง)
+        self.xp_reward: int = cfg.get("xp_reward", 0)
 
     # ============================================================
     # Animation loading
@@ -165,7 +179,7 @@ class EnemyNode(AnimatedNode):
     # ============================================================
     def take_hit(self, attacker_stats: Stats, damage_packet: DamagePacket) -> DamageResult:
         if self.is_dead:
-            # ตายแล้วโดนซ้ำ ก็ไม่ต้องเปลี่ยน state อะไรเพิ่ม
+            # ตายแล้วโดนซ้ำ ไม่ต้องเปลี่ยน state เพิ่ม
             return compute_damage(attacker_stats, self.stats, damage_packet)
 
         # เล่นเสียง
@@ -184,13 +198,13 @@ class EnemyNode(AnimatedNode):
             self.state = "hurt"
 
         print(
-            f"[Enemy] took {result.final_damage} dmg "
+            f"[Enemy:{self.enemy_id}] took {result.final_damage} dmg "
             f"({'CRIT' if result.is_crit else 'normal'}) "
             f"HP: {self.stats.hp}/{self.stats.max_hp}"
         )
 
         if result.killed:
-            print("[Enemy] died!")
+            print(f"[Enemy:{self.enemy_id}] died!")
             self.is_dead = True
             self.hurt_timer = 0.0
             self.velocity.update(0, 0)
