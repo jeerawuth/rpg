@@ -8,6 +8,8 @@ from combat.damage_system import Stats, DamagePacket, DamageResult, compute_dama
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
 from .projectile_node import ProjectileNode
+from entities.slash_effect_node import SlashEffectNode
+
 
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
 try:
@@ -129,6 +131,12 @@ class PlayerNode(AnimatedNode):
 
         # ---------- Attack animation timer ----------
         self.attack_timer: float = 0.0
+
+        # ----- DEBUG melee hitbox effect -----
+        self.debug_attack_rect: pygame.Rect | None = None
+        self.debug_attack_timer: float = 0.0
+        # ----- DEBUG melee hitbox effect -----
+
 
     # ============================================================
     # Animation loading
@@ -362,7 +370,43 @@ class PlayerNode(AnimatedNode):
                 if weapon.id == "sword_basic":
                     return 15
         return 10
+    
 
+    # คำนวณกรอบโจมตีสำหรับฟันระยะใกล้
+    def _get_attack_rect(self) -> pygame.Rect:
+        RANGE = 32  # ระยะยื่นออกจากตัวละคร
+
+        # โจมตีตามแกนที่หันหน้าอยู่มากที่สุด (เหมือนของเดิม)
+        if abs(self.facing.x) > abs(self.facing.y):
+            # ----- โจมตีซ้าย–ขวา -----
+            width = RANGE
+            height = self.rect.height
+
+            attack_rect = pygame.Rect(0, 0, width, height)
+
+            if self.facing.x > 0:
+                # ฟันขวา: ให้สี่เหลี่ยมติดขอบขวาของตัวละคร
+                attack_rect.midleft = self.rect.midright
+            else:
+                # ฟันซ้าย: ให้สี่เหลี่ยมติดขอบซ้ายของตัวละคร
+                attack_rect.midright = self.rect.midleft
+        else:
+            # ----- โจมตีบน–ล่าง -----
+            width = self.rect.width
+            height = RANGE
+
+            attack_rect = pygame.Rect(0, 0, width, height)
+
+            if self.facing.y > 0:
+                # ฟันล่าง: สี่เหลี่ยมติดขอบล่าง
+                attack_rect.midtop = self.rect.midbottom
+            else:
+                # ฟันบน: สี่เหลี่ยมติดขอบบน
+                attack_rect.midbottom = self.rect.midtop
+
+        return attack_rect
+    
+    # การโจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
     def _melee_slash(self) -> None:
         """
         โจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
@@ -385,8 +429,10 @@ class PlayerNode(AnimatedNode):
             scaling_attack=1.0,
         )
 
-        # สร้าง hitbox ด้านหน้าตัวละคร
-        attack_rect = self.rect.copy()
+        # สร้างกรอบระยะการโจมตีด้วยการฟันดาบแบบสมมาตร
+        attack_rect = self._get_attack_rect()
+
+
         RANGE = 32  # ระยะเอื้อมของดาบ
 
         if abs(self.facing.x) > abs(self.facing.y):
@@ -405,6 +451,17 @@ class PlayerNode(AnimatedNode):
         # ขยายกรอบให้ใหญ่ขึ้นหน่อย
         attack_rect.inflate_ip(10, 10)
 
+
+        # สร้างเอฟเฟกต์ตีดาบ (slash) ให้เห็นระยะ
+        SlashEffectNode(
+            self.game,
+            attack_rect,
+            self.direction,            # ใช้ทิศเดียวกับ anim player
+            self.game.all_sprites,     # ใส่ใน all_sprites ก็พอ
+            # จะเพิ่ม group แยก effects ก็ได้ถ้ามี
+        )
+
+
         # เช็คทุก enemy ว่าโดนฟันไหม
         for enemy in self.game.enemies.sprites():
             if attack_rect.colliderect(enemy.rect):
@@ -413,36 +470,9 @@ class PlayerNode(AnimatedNode):
         # cooldown โจมตี
         self.shoot_timer = self.shoot_cooldown
 
-    # def _shoot_projectile(self) -> None:
-        
-        
-    #     # เล่นเสียงยิงธนู
-    #     if hasattr(self, "sfx_bow_shoot"):
-    #         self.sfx_bow_shoot.play()
-    #     direction = self.facing
-    #     if direction.length_squared() == 0:
-    #         direction = pygame.Vector2(1, 0)
 
-    #     base_damage = self._get_current_weapon_base_damage()
+    
 
-    #     packet = DamagePacket(
-    #         base=base_damage,
-    #         damage_type="physical",
-    #         scaling_attack=0.8,
-    #     )
-
-    #     ProjectileNode(
-    #         self,
-    #         self.rect.center,
-    #         direction,
-    #         450,
-    #         packet,
-    #         1.5,
-    #         self.projectile_group,
-    #         self.game.all_sprites,
-    #     )
-
-    #     self.shoot_timer = self.shoot_cooldown
 
     def _shoot_projectile(self) -> None:
         # เล่นเสียงยิงธนู

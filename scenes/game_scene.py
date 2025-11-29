@@ -63,7 +63,6 @@ class GameScene(BaseScene):
             )
 
 
-
         # ---------- ITEMS (ตาม level ที่่โหลดเข้ามา) ----------
         for spawn in self.level_data.item_spawns:
             pos = tuple(spawn["pos"])          # [x, y] -> (x, y)
@@ -151,7 +150,6 @@ class GameScene(BaseScene):
 
             if leftover > 0:
                 print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
-
 
 
     # ---------- DRAW ----------
