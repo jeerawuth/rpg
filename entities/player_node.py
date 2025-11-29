@@ -54,6 +54,10 @@ class PlayerNode(AnimatedNode):
         # assets/graphics/images/player/{state}/{state}_{direction}_01.png
         self._load_animations()
 
+        # โหลดเฟรมท่ายิงธนู (attack_arrow_*)
+        self.bow_attack_animations: dict[str, list[pygame.Surface]] = {}
+        self._load_bow_attack_animations()
+
         # เลือกเฟรมเริ่มต้น
         if ("idle", "down") in self.animations:
             start_frames = self.animations[("idle", "down")]
@@ -151,6 +155,29 @@ class PlayerNode(AnimatedNode):
             frames.append(surf)
             index += 1
         return frames
+    
+    # โหลดแฟรมท่ายิงธนู
+    def _load_bow_attack_animations(self) -> None:
+        """
+        โหลดเฟรม:
+        assets/graphics/images/player/attack/attack_arrow_<direction>_01.png ...
+        """
+        directions = ["down", "left", "right", "up"]
+
+        for direction in directions:
+            frames: list[pygame.Surface] = []
+            index = 1
+            while True:
+                rel_path = f"player/attack/attack_arrow_{direction}_{index:02d}.png"
+                try:
+                    surf = self.game.resources.load_image(rel_path)
+                except Exception:
+                    break
+                frames.append(surf)
+                index += 1
+
+            if frames:
+                self.bow_attack_animations[direction] = frames
 
     # ============================================================
     # Equipment / Stats
@@ -286,12 +313,36 @@ class PlayerNode(AnimatedNode):
         else:
             self.state = "idle"
 
+
     def _apply_animation(self) -> None:
-        frames = self.animations.get((self.state, self.direction))
+        state = self.state
+        direction = self.direction
+
+        frames: list[pygame.Surface] | None = None
+
+        # ถ้าเป็นท่าโจมตี ให้เช็คก่อนว่าถือธนูอยู่ไหม
+        if state == "attack" and getattr(self, "equipment", None) is not None:
+            weapon = self.equipment.get_item("main_hand")
+
+            if (
+                weapon
+                and weapon.item_type == "weapon"
+                and weapon.id.startswith("bow_")
+                and hasattr(self, "bow_attack_animations")
+            ):
+                # ถ้ามีเฟรมท่ายิงธนูสำหรับทิศนี้ ให้ใช้แทนท่าฟัน
+                frames = self.bow_attack_animations.get(direction)
+
+        # ถ้าไม่ได้ถือธนู หรือไม่มีเฟรมธนู -> ใช้เฟรมปกติ
+        if frames is None:
+            frames = self.animations.get((state, direction))
+
         if not frames:
             return
+
         if frames is not self.frames:
             self.set_frames(frames, reset=False)
+
 
     # ============================================================
     # Damage / combat
@@ -362,12 +413,42 @@ class PlayerNode(AnimatedNode):
         # cooldown โจมตี
         self.shoot_timer = self.shoot_cooldown
 
+    # def _shoot_projectile(self) -> None:
+        
+        
+    #     # เล่นเสียงยิงธนู
+    #     if hasattr(self, "sfx_bow_shoot"):
+    #         self.sfx_bow_shoot.play()
+    #     direction = self.facing
+    #     if direction.length_squared() == 0:
+    #         direction = pygame.Vector2(1, 0)
+
+    #     base_damage = self._get_current_weapon_base_damage()
+
+    #     packet = DamagePacket(
+    #         base=base_damage,
+    #         damage_type="physical",
+    #         scaling_attack=0.8,
+    #     )
+
+    #     ProjectileNode(
+    #         self,
+    #         self.rect.center,
+    #         direction,
+    #         450,
+    #         packet,
+    #         1.5,
+    #         self.projectile_group,
+    #         self.game.all_sprites,
+    #     )
+
+    #     self.shoot_timer = self.shoot_cooldown
+
     def _shoot_projectile(self) -> None:
-        
-        
         # เล่นเสียงยิงธนู
         if hasattr(self, "sfx_bow_shoot"):
             self.sfx_bow_shoot.play()
+
         direction = self.facing
         if direction.length_squared() == 0:
             direction = pygame.Vector2(1, 0)
@@ -391,7 +472,13 @@ class PlayerNode(AnimatedNode):
             self.game.all_sprites,
         )
 
+        # ให้ตัวละครเล่นท่า "โจมตี" ช่วงสั้น ๆ (เอาไว้เลือกเฟรม attack_arrow)
+        self.state = "attack"
+        self.attack_timer = 0.25
+
+        # ตั้ง cooldown การยิง
         self.shoot_timer = self.shoot_cooldown
+
 
     def shoot(self) -> None:
         if self.shoot_timer > 0:
