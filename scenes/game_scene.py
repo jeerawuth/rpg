@@ -90,6 +90,33 @@ class GameScene(BaseScene):
             deadzone_height=SCREEN_HEIGHT // 2,
         )
 
+    
+    # ---------- Helper: เลือกสีแท่ง HP ตามสัดส่วน ----------
+    def _get_hp_color(self, ratio: float) -> tuple[int, int, int]:
+        """
+        ratio: 0.0 (ตาย/ไม่มีเลือด) -> 1.0 (เต็มหลอด)
+        ไล่สี: เขียว (1.0) -> เหลือง (0.5) -> แดง (0.0)
+        """
+        ratio = max(0.0, min(1.0, ratio))
+
+        if ratio > 0.5:
+            # โซนบน: เขียว (0,255,0) -> เหลือง (255,255,0)
+            # ratio=1.0 => t=1 => (0,255,0)
+            # ratio=0.5 => t=0 => (255,255,0)
+            t = (ratio - 0.5) / 0.5  # 0 ที่ 0.5, 1 ที่ 1.0
+            r = int(255 * (1.0 - t))  # 255 -> 0
+            g = 255
+        else:
+            # โซนล่าง: เหลือง (255,255,0) -> แดง (255,0,0)
+            # ratio=0.5 => t=1 => (255,255,0)
+            # ratio=0.0 => t=0 => (255,0,0)
+            t = ratio / 0.5  # 0 ที่ 0.0, 1 ที่ 0.5
+            r = 255
+            g = int(255 * t)  # 0 -> 255
+        b = 0
+        return (r, g, b)
+
+
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
         
@@ -161,13 +188,38 @@ class GameScene(BaseScene):
         # วาด tilemap ตาม offset
         self.tilemap.draw(surface, camera_offset=offset)
 
-        # วาด sprite โดยเลื่อนตาม offset (แทนการใช้ self.all_sprites.draw(surface) ตรง ๆ)
+        # วาด sprite โดยเลื่อนตาม offset
         for sprite in self.all_sprites:
             draw_x = sprite.rect.x - int(offset.x)
             draw_y = sprite.rect.y - int(offset.y)
             surface.blit(sprite.image, (draw_x, draw_y))
 
-        # HUD (วาดแบบ fixed screen, ไม่ต้องใช้ offset)
+            # ---------- วาดแถบ HP ของศัตรู ----------
+            if isinstance(sprite, EnemyNode) and not sprite.is_dead:
+                ratio = sprite.hp_ratio   # ใช้ property ที่เราเพิ่มเมื่อกี้
+
+                # ขนาดแท่ง HP (สั้นกว่าตัว 50%)
+                full_width = sprite.rect.width
+                bar_width = int(full_width * 0.5)
+                bar_height = 3
+
+                # ตำแหน่งวาด: เหนือหัวศัตรูนิดหน่อย + จัดให้อยู่กลางหัว
+                bar_x = draw_x + (full_width - bar_width) // 2
+                bar_y = draw_y - 4  # ปรับขึ้น/ลงตามที่ชอบ
+
+                # พื้นหลังแท่ง (เทาเข้ม)
+                bg_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)
+                pygame.draw.rect(surface, (40, 40, 40), bg_rect)
+
+                # ความยาวตาม % HP
+                hp_width = int(bar_width * ratio)
+                hp_color = self._get_hp_color(ratio)
+
+                hp_rect = pygame.Rect(bar_x, bar_y, hp_width, bar_height)
+                pygame.draw.rect(surface, hp_color, hp_rect)
+
+
+        # HUD (วาดแบบ fixed screen)
         lines = [
             "Game Scene (Camera + Tilemap + Combat)",
             "WASD - Move | SPACE - Attack | I - Inventory",
@@ -177,3 +229,4 @@ class GameScene(BaseScene):
         for i, t in enumerate(lines):
             t_surf = self.font.render(t, True, (10, 10, 10))
             surface.blit(t_surf, (20, 20 + i * 24))
+

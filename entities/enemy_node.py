@@ -91,6 +91,17 @@ class EnemyNode(AnimatedNode):
         self.xp_reward: int = cfg.get("xp_reward", 0)
 
     # ============================================================
+    # Hp ratio calculation
+    # ============================================================
+    @property
+    def hp_ratio(self) -> float:
+        """คืนค่า 0.0–1.0 แทนสัดส่วน HP ปัจจุบัน"""
+        if self.stats.max_hp <= 0:
+            return 0.0
+        ratio = self.stats.hp / self.stats.max_hp
+        return max(0.0, min(1.0, ratio))
+    
+    # ============================================================
     # Animation loading
     # ============================================================
     def _load_animations(self) -> None:
