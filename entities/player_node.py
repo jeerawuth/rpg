@@ -33,8 +33,8 @@ class PlayerNode(AnimatedNode):
         self.sfx_slash = self.game.resources.load_sound("sfx/slash.wav")
         self.sfx_bow_shoot = self.game.resources.load_sound("sfx/bow_shoot.wav")
 
-        # ใช้ slash.wav เป็นเสียงเก็บไอเท็มด้วย
-        self.sfx_item_pickup = self.sfx_slash
+        # ใช้ pickup_itemp.wav เป็นเสียงเก็บไอเท็ม
+        self.sfx_item_pickup = self.game.resources.load_sound("sfx/pickup_item.wav")
 
         self.sfx_slash.set_volume(0.7)
         self.sfx_bow_shoot.set_volume(0.7)

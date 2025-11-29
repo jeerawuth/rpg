@@ -19,9 +19,14 @@ class LevelData:
     height: int
     layers: Dict[str, List[List[int]]]
     player_spawn: Tuple[int, int]
-    # enemy_spawns: list ของ dict เช่น
-    # { "type": "goblin", "pos": [x, y] }
+
+    # enemy_spawns: list ของ dict เช่น { "type": "goblin", "pos": [x, y] }
     enemy_spawns: List[Dict[str, Any]]
+
+    # item_spawns: list ของ dict เช่น
+    # { "item_id": "bow_power_1", "pos": [x, y], "amount": 1 }
+    item_spawns: List[Dict[str, Any]]
+
 
 
 def _get_data_dir() -> str:
@@ -93,6 +98,37 @@ def load_level(name: str) -> LevelData:
                 "pos": [x, y],
             })
 
+    # ---------- item_spawns ----------
+    # รองรับรูปแบบใหม่ใน level01.json:
+    #   "item_spawns": [
+    #     { "item_id": "bow_power_1", "pos": [276, 176], "amount": 1 },
+    #     { "item_id": "shield", "pos": [296, 376], "amount": 1 }
+    #   ]
+    raw_item_spawns = raw.get("item_spawns", [])
+
+    item_spawns: List[Dict[str, Any]] = []
+    for entry in raw_item_spawns:
+        if isinstance(entry, dict):
+            # ถ้าไม่ได้ใส่ amount มาใน JSON ให้ default = 1
+            if "amount" not in entry:
+                entry = {**entry, "amount": 1}
+            item_spawns.append(entry)
+        else:
+            # เผื่ออนาคตมีรูปแบบง่าย ๆ เช่น [x, y, "item_id"]
+            # หรือ [x, y] อย่างน้อยก็ไม่ให้เกมพัง
+            if len(entry) >= 3:
+                x, y, item_id = entry[:3]
+            else:
+                x, y = entry
+                item_id = "unknown"
+
+            item_spawns.append({
+                "item_id": item_id,
+                "pos": [x, y],
+                "amount": 1,
+            })
+
+
     return LevelData(
         id=raw["id"],
         tileset=raw["tileset"],
@@ -102,4 +138,6 @@ def load_level(name: str) -> LevelData:
         layers=raw["layers"],
         player_spawn=tuple(raw.get("player_spawn", (0, 0))),
         enemy_spawns=enemy_spawns,
+        item_spawns=item_spawns,
     )
+

@@ -1863,13 +1863,38 @@
     176
   ],
   "enemy_spawns": [
-    [
-      656,
-      368
-    ],
-    [
-      976,
-      592
-    ]
+    {
+      "type": "goblin",
+      "pos": [656, 375]
+    },
+    {
+      "type": "goblin",
+      "pos": [976, 592]
+    },
+    {
+      "type": "slime_green",
+      "pos": [400, 455]
+    },
+    {
+      "type": "slime_green",
+      "pos": [200, 355]
+    }
+  ],
+  "item_spawns": [
+    {
+      "item_id": "bow_power_1",
+      "pos": [276, 176], 
+      "amount": 1
+    },
+    {
+      "item_id": "shield",
+      "pos": [296, 376],
+      "amount": 1
+    },
+    {
+      "item_id": "shield",
+      "pos": [876, 576],
+      "amount": 3
+    }
   ]
 }

@@ -1,6 +1,5 @@
 # scenes/game_scene.py
 from __future__ import annotations
-import random
 
 import pygame
 
@@ -65,26 +64,21 @@ class GameScene(BaseScene):
 
 
 
-        # ---------- ITEMS (ตัวอย่าง: ไอเท็มเพิ่มพลังธนู) ----------
-        # สมมติ item_id ในฐานข้อมูลคือ "bow_power_1"
-        ItemNode(
-            self.game,
-            (self.player.rect.centerx + 64, self.player.rect.centery),
-            "bow_power_1",        # item_id ต้องมีอยู่ใน ITEM_DB
-            1,                    # จำนวน
-            self.all_sprites,
-            self.items,
-        )
+        # ---------- ITEMS (ตาม level ที่่โหลดเข้ามา) ----------
+        for spawn in self.level_data.item_spawns:
+            pos = tuple(spawn["pos"])          # [x, y] -> (x, y)
+            item_id = spawn["item_id"]
+            amount = spawn.get("amount", 1)
 
-        # สมมติ item_id ในฐานข้อมูลคือ "bow_power_1"
-        ItemNode(
-            self.game,
-            (self.player.rect.centerx + 100, self.player.rect.centery),
-            "shield",             # item_id ต้องมีอยู่ใน ITEM_DB
-            1,                    # จำนวน
-            self.all_sprites,
-            self.items,
-        )
+            ItemNode(
+                self.game,
+                pos,
+                item_id,
+                amount,
+                self.all_sprites,
+                self.items,
+            )
+
 
         # ---------- CAMERA ----------
         self.camera = Camera(
