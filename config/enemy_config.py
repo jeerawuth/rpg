@@ -17,6 +17,7 @@ ENEMY_CONFIG: dict[str, dict] = {
         ),
         "speed": 80,
         "move_range": 80,
+        "aggro_radius": 200,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
     "slime_green": {
@@ -33,6 +34,7 @@ ENEMY_CONFIG: dict[str, dict] = {
         ),
         "speed": 100,
         "move_range": 800,
+        "aggro_radius": 160,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
     # เพิ่ม enemy ชนิดใหม่ได้เรื่อย ๆ

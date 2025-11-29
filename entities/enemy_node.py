@@ -82,6 +82,11 @@ class EnemyNode(AnimatedNode):
         self.move_range: float = cfg.get("move_range", 80)
         self._origin_x: int = pos[0]
 
+        # รัศมีที่ถ้า player เข้ามาใกล้ จะเริ่มวิ่งไล่
+        self.aggro_radius: float = cfg.get("aggro_radius", 200)
+        self._aggro_radius_sq: float = self.aggro_radius * self.aggro_radius
+
+
         # ---------- Timers ----------
         self.hurt_timer: float = 0.0
         self.is_dead: bool = False
@@ -152,6 +157,52 @@ class EnemyNode(AnimatedNode):
             # ปรับทิศหัน
             self.facing.x = 1 if self.patrol_dir > 0 else -1
             self.facing.y = 0
+
+    def _update_ai(self, dt: float) -> None:
+        """
+        เลือกว่า enemy ตัวนี้จะ 'patrol' เฉย ๆ หรือ 'วิ่งไล่ player'
+        ตามระยะ aggro_radius
+        """
+        if self.is_dead:
+            self.velocity.update(0, 0)
+            return
+
+        # ถ้า game ยังไม่รู้จัก player ก็ patrol ไปก่อน
+        player = getattr(self.game, "player", None)
+        if player is None:
+            self._patrol(dt)
+            return
+
+        ex, ey = self.rect.center
+        px, py = player.rect.center
+
+        dx = px - ex
+        dy = py - ey
+        dist_sq = dx * dx + dy * dy
+
+        # ถ้า player อยู่ในรัศมี -> ไล่ตาม
+        if dist_sq <= self._aggro_radius_sq:
+            # หาทิศทางไปหา player
+            vec = pygame.Vector2(dx, dy)
+            if vec.length_squared() > 0:
+                vec = vec.normalize()
+
+            # ตั้งความเร็วให้วิ่งเข้าหา player
+            self.velocity.x = vec.x * self.speed
+            self.velocity.y = vec.y * self.speed
+
+            # ขยับตำแหน่ง (ตอนนี้ยังไม่ได้ทำชนกับกำแพง ถ้าจะทำจริง
+            # ค่อยแตกเป็น _move_and_collide แบบ Player)
+            self.rect.x += int(self.velocity.x * dt)
+            self.rect.y += int(self.velocity.y * dt)
+
+            # ปรับทิศหันให้ตรงกับทิศวิ่ง
+            self.facing.x = vec.x
+            self.facing.y = vec.y
+        else:
+            # ถ้าไกลเกินรัศมี -> เดิน patrol ไป-มาเหมือนเดิม
+            self._patrol(dt)
+
 
     # ============================================================
     # Animation state
@@ -241,7 +292,8 @@ class EnemyNode(AnimatedNode):
             if self.hurt_timer < 0:
                 self.hurt_timer = 0.0
 
-        self._patrol(dt)
+        # เดิมใช้ patrol อย่างเดียว -> เปลี่ยนเป็นใช้ AI
+        self._update_ai(dt)
 
         self._update_animation_state()
         self._apply_animation()
@@ -252,3 +304,4 @@ class EnemyNode(AnimatedNode):
             self.death_timer -= dt
             if self.death_timer <= 0:
                 self.kill()
+

@@ -48,6 +48,9 @@ class GameScene(BaseScene):
             self.projectiles,
             self.all_sprites,
         )
+        
+        # ให้ enemy / ระบบอื่น ๆ อ้างถึง player ได้ผ่าน self.game
+        self.game.player = self.player
 
         # ---------- ENEMIES ----------
         for spawn in self.level_data.enemy_spawns:
