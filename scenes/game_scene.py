@@ -6,17 +6,19 @@ import pygame
 from .base_scene import BaseScene
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
-from entities.item_node import ItemNode
 from combat.collision_system import handle_group_vs_group
-from combat.damage_system import DamagePacket  # แค่ type hint
 from world.level_data import load_level
 from world.tilemap import TileMap
 from world.spawn_manager import SpawnManager
 from core.camera import Camera
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
+from entities.item_node import ItemNode
 
 from .pause_scene import PauseScene
 from .inventory_scene import InventoryScene
+
+# Projectile vs Enemies
+from combat.damage_system import DamagePacket  # แค่ type hint
 
 
 class GameScene(BaseScene):
@@ -24,12 +26,16 @@ class GameScene(BaseScene):
         super().__init__(game)
         self.font = pygame.font.Font(None, 32)
 
-        # ---------- LEVEL / TILEMAP ----------
-        # โหลดข้อมูลเลเวลจากชื่อ (เช่น "level01", "level02")
-        self.level_data = load_level(level_id)
-        # ใช้ id จากไฟล์เป็นตัวจริง (กันกรณีสะกดผิดตอนเรียก)
-        self.level_id = self.level_data.id
+        # เก็บชื่อเลเวลปัจจุบัน (เอาไว้ใช้เปลี่ยนด่าน)
+        self.level_id = level_id
 
+        # สถานะเคลียร์ด่าน (ใช้สำหรับแสดงข้อความ Stage Clear ชั่วคราว)
+        self.stage_clear = False
+        self.stage_clear_timer = 0.0
+        self.stage_clear_duration = 2.0  # ระยะเวลาที่โชว์ข้อความ Stage Clear (วินาที)
+
+        # ---------- LEVEL / TILEMAP ----------
+        self.level_data = load_level(level_id)
         self.tilemap = TileMap(self.level_data, self.game.resources)
 
         # ---------- SPRITE GROUPS ----------
@@ -55,9 +61,8 @@ class GameScene(BaseScene):
         # ให้ enemy / ระบบอื่น ๆ อ้างถึง player ได้ผ่าน self.game
         self.game.player = self.player
 
-        # ---------- ENEMIES (ใช้ SpawnManager จัดการ spawn) ----------
-        # SpawnManager จะอ่าน enemy_spawns จาก LevelData แล้วคอยสร้าง EnemyNode ตามเวลา (spawn_time)
-        # ถ้า enemy_spawns ไม่มี spawn_time จะถือว่า spawn_time = 0 (เกิดทันทีตอนเริ่มด่าน)
+        # ---------- ENEMIES (ใช้ SpawnManager แทนการ spawn ตรง ๆ) ----------
+        # SpawnManager จะอ่าน enemy_spawns จาก LevelData แล้วคอยสร้าง EnemyNode ตามเวลา
         self.spawn_manager = SpawnManager(
             self.game,
             self.level_data,
@@ -90,9 +95,6 @@ class GameScene(BaseScene):
             deadzone_width=SCREEN_WIDTH // 2,   # กึ่งกลางจอ
             deadzone_height=SCREEN_HEIGHT // 2,
         )
-
-        # ใช้กันไม่ให้ trigger เคลียร์ด่านซ้ำซ้อน
-        self._level_cleared = False
 
     # ---------- Helper: เลือกสีแท่ง HP ตามสัดส่วน ----------
     def _get_hp_color(self, ratio: float) -> tuple[int, int, int]:
@@ -134,7 +136,30 @@ class GameScene(BaseScene):
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
-        # collisionRect จาก tilemap
+        # ถ้าด่านถูกเคลียร์แล้ว ให้แสดงข้อความ Stage Clear ชั่วคราว
+        if self.stage_clear:
+            self.stage_clear_timer += dt
+
+            # รอครบเวลาที่กำหนดแล้วค่อยเปลี่ยนไปด่านถัดไป / ฉากถัดไป
+            if self.stage_clear_timer >= self.stage_clear_duration:
+                # อ่าน next_level จาก level_data
+                next_id = getattr(self.level_data, "next_level", "") or ""
+
+                if next_id:
+                    # มีด่านถัดไป -> โหลด GameScene ใหม่ด้วย level_id ที่ JSON บอก
+                    from .game_scene import GameScene
+                    self.game.scene_manager.set_scene(
+                        GameScene(self.game, level_id=next_id)
+                    )
+                else:
+                    # ไม่มีด่านถัดไปแล้ว -> กลับ Lobby (หรือ Main Menu)
+                    from .lobby_scene import LobbyScene
+                    self.game.scene_manager.set_scene(LobbyScene(self.game))
+
+            return
+
+
+        # ให้ player ใช้ collisionRect จาก tilemap
         self.player.set_collision_rects(self.tilemap.collision_rects)
 
         # อัปเดต sprite ทั้งหมด
@@ -182,32 +207,22 @@ class GameScene(BaseScene):
             if leftover > 0:
                 print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
 
-        # ---------- เช็คจบด่าน & เปลี่ยนไป level ถัดไป ----------
+        # ---------- เช็คจบด่าน & เริ่มแสดง Stage Clear ----------
         # เงื่อนไข:
-        # - spawn_manager สร้างศัตรูทุกตัวที่อยู่ใน enemy_spawns ครบแล้ว (is_finished)
-        # - ศัตรูที่ถูกสร้างออกมาทั้งหมดถูกฆ่าหมดแล้ว (self.enemies ว่าง)
+        # - SpawnManager spawn ศัตรูครบทุกตัวแล้ว (is_finished)
+        # - ศัตรูที่ถูกสร้างออกมาทั้งหมดถูกกำจัดหมด (กลุ่ม enemies ว่าง)
+        # - ยังไม่ได้อยู่ในสถานะ stage_clear
         if (
-            not self._level_cleared
-            and hasattr(self, "spawn_manager")
+            hasattr(self, "spawn_manager")
             and getattr(self.spawn_manager, "is_finished", False)
             and len(self.enemies.sprites()) == 0
+            and not self.stage_clear
         ):
-            self._level_cleared = True
-
-            # อ่าน next_level จาก LevelData (ถ้าไม่มี field นี้ จะได้ "" กลับมา)
-            next_id = getattr(self.level_data, "next_level", "") or ""
-
-            if next_id:
-                # มีด่านถัดไป -> สร้าง GameScene ใหม่ด้วย level_id ที่ JSON บอก
-                from .game_scene import GameScene  # import แบบ local กันวงวน
-                self.game.scene_manager.set_scene(
-                    GameScene(self.game, level_id=next_id)
-                )
-            else:
-                # ไม่มีด่านถัดไปแล้ว -> แล้วแต่ดีไซน์ (ตอนนี้แค่ print ไว้)
-                print("Stage clear! ไม่มีด่านถัดไปแล้ว")
-
+            # เข้าสู่โหมดเคลียร์ด่าน: หยุดอัปเดตเกมปกติ แล้วให้บล็อกด้านบนจัดการตัวจับเวลา
+            self.stage_clear = True
+            self.stage_clear_timer = 0.0
             return
+
 
     # ---------- DRAW ----------
     def draw(self, surface: pygame.Surface) -> None:
@@ -258,3 +273,17 @@ class GameScene(BaseScene):
         for i, t in enumerate(lines):
             t_surf = self.font.render(t, True, (10, 10, 10))
             surface.blit(t_surf, (20, 20 + i * 24))
+
+        # ถ้าอยู่ในสถานะเคลียร์ด่าน ให้แสดงข้อความ Stage Clear กลางจอ
+        if self.stage_clear:
+            # ทำ overlay ทึบเล็กน้อย
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            surface.blit(overlay, (0, 0))
+
+            text = "STAGE CLEAR"
+            text_surf = self.font.render(text, True, (255, 255, 255))
+            text_rect = text_surf.get_rect(
+                center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
+            )
+            surface.blit(text_surf, text_rect)

@@ -1,5 +1,5 @@
 {
-  "id": "level01",
+  "id": "level02",
   "next_level": "", 
   "tileset": "overworld_tiles.png",
   "tile_size": 32,
@@ -1877,12 +1877,42 @@
     {
       "type": "slime_green",
       "pos": [400, 455],
-      "spawn_time": 5 
+      "spawn_time": 0
     },
     {
       "type": "slime_green",
       "pos": [200, 355],
       "spawn_time": 5 
+    },
+    {
+      "type": "slime_green",
+      "pos": [800, 215],
+      "spawn_time": 5 
+    },
+    {
+      "type": "goblin",
+      "pos": [600, 150],
+      "spawn_time": 5 
+    },
+    {
+      "type": "goblin",
+      "pos": [656, 375],
+      "spawn_time": 5 
+    },
+    {
+      "type": "goblin",
+      "pos": [976, 592],
+      "spawn_time": 5
+    },
+    {
+      "type": "slime_green",
+      "pos": [400, 455],
+      "spawn_time": 15 
+    },
+    {
+      "type": "slime_green",
+      "pos": [200, 355],
+      "spawn_time": 15 
     },
     {
       "type": "slime_green",

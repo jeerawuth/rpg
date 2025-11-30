@@ -1,6 +1,6 @@
 {
-  "id": "level01",
-  "next_level": "level03",
+  "id": "level03",
+  "next_level": "level02", 
   "tileset": "overworld_tiles.png",
   "tile_size": 32,
   "width": 40,
@@ -1868,21 +1868,6 @@
       "type": "goblin",
       "pos": [656, 375],
       "spawn_time": 0 
-    },
-    {
-      "type": "goblin",
-      "pos": [976, 592],
-      "spawn_time": 5 
-    },
-    {
-      "type": "slime_green",
-      "pos": [400, 455],
-      "spawn_time": 10 
-    },
-    {
-      "type": "slime_green",
-      "pos": [200, 355],
-      "spawn_time": 10 
     }
   ],
   "item_spawns": [
@@ -1890,19 +1875,7 @@
       "item_id": "bow_power_1",
       "pos": [276, 176], 
       "amount": 1,
-      "spawn_time": 0 
-    },
-    {
-      "item_id": "shield",
-      "pos": [296, 376],
-      "amount": 1,
       "spawn_time": 5 
-    },
-    {
-      "item_id": "shield",
-      "pos": [876, 576],
-      "amount": 3,
-      "spawn_time": 10
     }
   ]
 }
