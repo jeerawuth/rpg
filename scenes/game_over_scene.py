@@ -28,7 +28,15 @@ class GameOverScene(BaseScene):
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        surface.fill((30, 0, 0))
+        
+        # สร้าง overlay โปร่งแสงมาทับ เพื่อให้เห็นว่าเกมหยุดแล้ว
+        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        alpha = int(0.4 * 255)  # โปร่งแสง
+        overlay.fill((10, 10, 30, alpha))  # (r,g,b,a)
+
+        # วาด overlay ทับฉากเดิม
+        surface.blit(overlay, (0, 0))
+
         w, h = surface.get_size()
         title = self.font_big.render("Game Over", True, (255, 255, 255))
         surface.blit(title, title.get_rect(center=(w // 2, h // 3)))

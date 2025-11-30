@@ -27,7 +27,8 @@ class PauseScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         # วาด overlay ทับของ game scene ที่อยู่ข้างใต้
         overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
+        alpha = int(0.3 * 255)  # โปร่งแสง
+        overlay.fill((10, 10, 30, alpha))  # (r,g,b,a)
         surface.blit(overlay, (0, 0))
 
         w, h = surface.get_size()

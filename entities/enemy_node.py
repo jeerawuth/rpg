@@ -54,8 +54,11 @@ class EnemyNode(AnimatedNode):
         super().__init__(start_frames, 0.15, True, *groups)
 
         # ---------- SFX ----------
-        self.sfx_hit = self.game.resources.load_sound("sfx/enemy_hit.wav")
-        self.sfx_hit.set_volume(0.7)
+        try:
+            self.sfx_hit = self.game.resources.load_sound("sfx/enemy_hit.wav")
+            self.sfx_hit.set_volume(0.7)
+        except FileNotFoundError:
+            self.sfx_hit = None  # กัน error ถ้ายังไม่มีไฟล์
 
         # ---------- Position ----------
         self.rect.center = pos
@@ -244,7 +247,7 @@ class EnemyNode(AnimatedNode):
             # ตายแล้วโดนซ้ำ ไม่ต้องเปลี่ยน state เพิ่ม
             return compute_damage(attacker_stats, self.stats, damage_packet)
 
-        # เล่นเสียง
+        # 🔊 เล่นเสียงโดนตี (ถ้ามีไฟล์)
         if hasattr(self, "sfx_hit"):
             self.sfx_hit.play()
 
@@ -287,13 +290,16 @@ class EnemyNode(AnimatedNode):
     def update(self, dt: float) -> None:
         self.status.update(dt)
 
+        # นับเวลาหยุดนิ่ง/โดนตี (hurt_timer)
         if not self.is_dead and self.hurt_timer > 0:
             self.hurt_timer -= dt
             if self.hurt_timer < 0:
                 self.hurt_timer = 0.0
 
-        # เดิมใช้ patrol อย่างเดียว -> เปลี่ยนเป็นใช้ AI
-        self._update_ai(dt)
+        # ถ้ายังไม่ตาย และไม่ได้อยู่ในช่วงหยุดนิ่ง ค่อยอัปเดต AI / เดินไล่ player
+        if not self.is_dead and self.hurt_timer <= 0:
+            # เดิมใช้ patrol อย่างเดียว -> เปลี่ยนเป็นใช้ AI
+            self._update_ai(dt)
 
         self._update_animation_state()
         self._apply_animation()
@@ -304,4 +310,5 @@ class EnemyNode(AnimatedNode):
             self.death_timer -= dt
             if self.death_timer <= 0:
                 self.kill()
+
 

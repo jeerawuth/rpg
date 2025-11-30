@@ -15,6 +15,7 @@ from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
 from entities.item_node import ItemNode
 
 from .pause_scene import PauseScene
+from .game_over_scene import GameOverScene
 from .inventory_scene import InventoryScene
 
 # Projectile vs Enemies
@@ -25,6 +26,9 @@ class GameScene(BaseScene):
     def __init__(self, game, level_id: str = "level01") -> None:
         super().__init__(game)
         self.font = pygame.font.Font(None, 32)
+
+        # สถานะเกมโอเวอร์
+        self.game_over_triggered = False
 
         # เก็บชื่อเลเวลปัจจุบัน (เอาไว้ใช้เปลี่ยนด่าน)
         self.level_id = level_id
@@ -96,6 +100,11 @@ class GameScene(BaseScene):
             deadzone_height=SCREEN_HEIGHT // 2,
         )
 
+        # ---------- PLAYER CONTACT vs ENEMY ----------
+        # ใช้ควบคุมจังหวะโดนชนไม่ให้โดนทุกเฟรม
+        self.player_contact_cooldown = 0.5  # วินาทีที่กันชนซ้ำ
+        self.player_contact_timer = 0.0
+
     # ---------- Helper: เลือกสีแท่ง HP ตามสัดส่วน ----------
     def _get_hp_color(self, ratio: float) -> tuple[int, int, int]:
         """
@@ -136,6 +145,14 @@ class GameScene(BaseScene):
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
+        
+        # เช็คเกมโอเวอร์
+        if self.player.is_dead and not self.game_over_triggered:
+            pygame.mixer.stop()
+            self.game_over_triggered = True
+            self.game.scene_manager.push_scene(GameOverScene(self.game, score=0))
+
+
         # ถ้าด่านถูกเคลียร์แล้ว ให้แสดงข้อความ Stage Clear ชั่วคราว
         if self.stage_clear:
             self.stage_clear_timer += dt
@@ -186,6 +203,7 @@ class GameScene(BaseScene):
             kill_attack_on_hit=True,
         )
 
+
         # Player vs Items (pickup)
         hits = pygame.sprite.spritecollide(self.player, self.items, dokill=True)
 
@@ -200,12 +218,49 @@ class GameScene(BaseScene):
             if hasattr(self.player, "sfx_item_pickup"):
                 self.player.sfx_item_pickup.play()
             else:
-                # กันเหนียว ถ้าไม่มี ให้ลองใช้สกิลฟันแทน
                 if hasattr(self.player, "sfx_slash"):
                     self.player.sfx_slash.play()
 
             if leftover > 0:
                 print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
+
+        # ---------- Player vs Enemies (touch damage) ----------
+        # ลด cooldown การโดนชน (กันไม่ให้โดนซ้ำทุกเฟรม)
+        if self.player_contact_timer > 0:
+            self.player_contact_timer -= dt
+            if self.player_contact_timer < 0:
+                self.player_contact_timer = 0.0
+
+        # ใช้ rect collision แบบเดิม
+        touch_hits = pygame.sprite.spritecollide(self.player, self.enemies, False)
+
+        if touch_hits and self.player_contact_timer <= 0.0:
+            for enemy in touch_hits:
+                # กันพลาด: enemy ต้องมี stats ถึงจะใช้ระบบ damage ได้
+                if not hasattr(enemy, "stats"):
+                    continue
+
+                # ให้ดาเมจคำนวณจากค่า stats.attack ของ enemy (แยกตามชนิดของ enemy)
+                packet = DamagePacket(
+                    base=0.0,
+                    damage_type="physical",
+                    scaling_attack=1.0,
+                )
+
+                # 1) player โดน damage จากศัตรูตัวนี้
+                self.player.take_hit(enemy.stats, packet)
+
+                # 2) enemy หยุดการเคลื่อนไหวชั่วคราว 0.5 วินาที
+                if hasattr(enemy, "hurt_timer"):
+                    # ใช้ hurt_timer ที่มีอยู่แล้วใน EnemyNode
+                    enemy.hurt_timer = max(getattr(enemy, "hurt_timer", 0.0), 0.5)
+
+                # ให้โดนจาก enemy ตัวเดียวพอในการชนครั้งนี้
+                break
+
+            # ตั้ง cooldown ไม่ให้โดนชนทุกเฟรม
+            self.player_contact_timer = self.player_contact_cooldown
+
 
         # ---------- เช็คจบด่าน & เริ่มแสดง Stage Clear ----------
         # เงื่อนไข:

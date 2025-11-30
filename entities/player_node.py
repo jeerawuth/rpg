@@ -49,6 +49,10 @@ class PlayerNode(AnimatedNode):
         self.state: str = "idle"      # idle / walk / attack / hurt / dead / cast
         self.direction: str = "down"  # down / left / right / up
 
+        # ใช้เหมือน enemy
+        self.hurt_timer: float = 0.0
+        self.is_dead: bool = False
+
         self.velocity = pygame.Vector2(0, 0)
         self.facing = pygame.Vector2(0, 1)
 
@@ -73,6 +77,14 @@ class PlayerNode(AnimatedNode):
             start_frames = [img]
 
         super().__init__(start_frames, 0.12, True, *groups)
+
+
+        # ---------- SFX ----------
+        try:
+            self.sfx_hit = self.game.resources.load_sound("sfx/enemy_hit.wav")
+            self.sfx_hit.set_volume(0.9)
+        except FileNotFoundError:
+            self.sfx_hit = None  # กัน error ถ้ายังไม่มีไฟล์
 
         # ตั้งตำแหน่งเริ่มต้น
         self.rect.center = pos
@@ -310,16 +322,29 @@ class PlayerNode(AnimatedNode):
         else:
             self.direction = "down" if y >= 0 else "up"
 
-        # ถ้ายังอยู่ในช่วงเล่น animation โจมตี และมีเฟรม attack อยู่ ให้ล็อก state = "attack"
+        # ลำดับความสำคัญ: dead > hurt > attack > walk/idle
+
+        # 1) ถ้าตายแล้ว และมีเฟรม dead สำหรับทิศนี้
+        if getattr(self, "is_dead", False) and ("dead", self.direction) in self.animations:
+            self.state = "dead"
+            return
+
+        # 2) ถ้ายังมี hurt_timer เหลือ และมีเฟรม hurt สำหรับทิศนี้
+        if getattr(self, "hurt_timer", 0.0) > 0 and ("hurt", self.direction) in self.animations:
+            self.state = "hurt"
+            return
+
+        # 3) ถ้ายังอยู่ในช่วงเล่น animation โจมตี และมีเฟรม attack อยู่ ให้ล็อก state = "attack"
         if getattr(self, "attack_timer", 0.0) > 0 and ("attack", self.direction) in self.animations:
             self.state = "attack"
             return
 
-        # ปกติ: เดิน / ยืน
+        # 4) ปกติ: เดิน / ยืน
         if self.velocity.length_squared() > 0:
             self.state = "walk"
         else:
             self.state = "idle"
+
 
 
     def _apply_animation(self) -> None:
@@ -528,9 +553,11 @@ class PlayerNode(AnimatedNode):
 
     # เมื่อโดนโจมตี
     def take_hit(self, attacker_stats: Stats, damage_packet: DamagePacket) -> DamageResult:
+        # modifier จาก status (เช่น buff ลดดาเมจ)
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
 
+        # คำนวณดาเมจ + หัก HP จริง
         result = compute_damage(attacker_stats, self.stats, damage_packet)
 
         print(
@@ -539,8 +566,19 @@ class PlayerNode(AnimatedNode):
             f"HP: {self.stats.hp}/{self.stats.max_hp}"
         )
 
+        # 🔊 เล่นเสียงโดนตี (ถ้ามีไฟล์)
+        if hasattr(self, "sfx_hit"):
+            self.sfx_hit.play()
+
         if result.killed:
             print("[Player] died")
+            self.is_dead = True
+            self.hurt_timer = 0.0
+            # หยุดการเคลื่อนที่
+            self.velocity.update(0, 0)
+        else:
+            # ยังไม่ตาย -> ให้เล่นแอนิเมชันโดนตีสั้น ๆ
+            self.hurt_timer = 0.25
 
         return result
 
@@ -551,6 +589,12 @@ class PlayerNode(AnimatedNode):
     def update(self, dt: float) -> None:
         # buff/debuff
         self.status.update(dt)
+
+        # นับเวลาถูกโจมตี (ใช้เล่นแอนิเมชัน hurt)
+        if getattr(self, "hurt_timer", 0.0) > 0:
+            self.hurt_timer -= dt
+            if self.hurt_timer < 0:
+                self.hurt_timer = 0.0
 
         # cooldown การยิง
         if self.shoot_timer > 0:
@@ -564,9 +608,15 @@ class PlayerNode(AnimatedNode):
             if self.attack_timer < 0:
                 self.attack_timer = 0.0
 
-        # อินพุต + การเคลื่อนที่ + แอนิเมชัน
-        self._handle_input(dt)
+        # ถ้าตายแล้ว -> ไม่รับอินพุต ไม่ขยับ
+        if getattr(self, "is_dead", False):
+            self.velocity.update(0, 0)
+        else:
+            # อินพุต + การเคลื่อนที่ + แอนิเมชัน
+            self._handle_input(dt)
+
         self._update_animation_state()
         self._apply_animation()
 
         super().update(dt)
+
