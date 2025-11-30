@@ -208,21 +208,24 @@ class GameScene(BaseScene):
         hits = pygame.sprite.spritecollide(self.player, self.items, dokill=True)
 
         for item_node in hits:
-            inv = getattr(self.player, "inventory", None)
-            if inv is None:
-                continue
+            # ให้ ItemNode ตัดสินใจก่อนว่าไอเท็มนี้ใช้ทันทีไหม
+            used_instant = item_node.on_pickup(self.player)
 
-            leftover = inv.add_item(item_node.item_id, item_node.amount)
+            # ถ้ายังไม่ใช้ทันที -> เก็บเข้า inventory ตามปกติ
+            if not used_instant:
+                inv = getattr(self.player, "inventory", None)
+                if inv is not None:
+                    leftover = inv.add_item(item_node.item_id, item_node.amount)
+                    if leftover > 0:
+                        print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
 
-            # 🔊 เล่นเสียงเก็บไอเท็ม (ใช้ slash.wav ร่วมกัน)
+            # 🔊 เล่นเสียงเก็บไอเท็ม
             if hasattr(self.player, "sfx_item_pickup"):
                 self.player.sfx_item_pickup.play()
             else:
                 if hasattr(self.player, "sfx_slash"):
                     self.player.sfx_slash.play()
 
-            if leftover > 0:
-                print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
 
         # ---------- Player vs Enemies (touch damage) ----------
         # ลด cooldown การโดนชน (กันไม่ให้โดนซ้ำทุกเฟรม)

@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from entities.enemy_node import EnemyNode
+from entities.born_effect_node import BornEffectNode   # 💡 เพิ่ม import ตรงนี้
 from world.level_data import LevelData
 
 
@@ -27,17 +28,31 @@ class SpawnManager:
 
         # สร้างตาราง spawn จาก enemy_spawns ใน level_data
         for spawn in level_data.enemy_spawns:
-            spawn_time = float(spawn.get("spawn_time", 0.0))  # ถ้าไม่มี field ใช้ 0
+            spawn_time = float(spawn.get("spawn_time", 0.0))  # เวลาเกิดศัตรูจริง
+            enemy_type = spawn["type"]
+            pos = tuple(spawn["pos"])
 
+            # ---------- Event 1: สร้าง BornEffectNode ล่วงหน้า 1.5 วิ ----------
+            # เงื่อนไขใหม่: ถ้า spawn_time == 0 → ไม่ต้องสร้าง BornEffectNode
+            if spawn_time > 0.0:
+                effect_time = max(0.0, spawn_time - 1.5)
+                self._schedule.append({
+                    "time": effect_time,
+                    "kind": "born_effect",
+                    "type": enemy_type,
+                    "pos": pos,
+                    "spawned": False,
+                })
+
+            # ---------- Event 2: สร้าง Enemy จริง (ทุกกรณี) ----------
             self._schedule.append({
                 "time": spawn_time,
-                "type": spawn["type"],
-                "pos": tuple(spawn["pos"]),
+                "kind": "enemy",
+                "type": enemy_type,
+                "pos": pos,
                 "spawned": False,
             })
 
-        # เรียงตามเวลาไว้ก่อน
-        self._schedule.sort(key=lambda e: e["time"])
 
     @property
     def is_finished(self) -> bool:
@@ -67,12 +82,23 @@ class SpawnManager:
             if self._elapsed < entry["time"]:
                 break
 
-            # ถึงเวลาแล้ว → สร้าง EnemyNode ใส่ group
-            EnemyNode(
-                self.game,
-                entry["pos"],
-                self.all_sprites_group,
-                self.enemy_group,
-                enemy_id=entry["type"],
-            )
+            # เช็คชนิด event
+            if entry["kind"] == "born_effect":
+                # สร้างเอฟเฟกต์แจ้งเกิดศัตรู (ใส่แค่ all_sprites พอ)
+                BornEffectNode(
+                    self.game,
+                    entry["pos"],
+                    self.all_sprites_group,
+                )
+
+            elif entry["kind"] == "enemy":
+                # ถึงเวลาแล้ว → สร้าง EnemyNode ใส่ group
+                EnemyNode(
+                    self.game,
+                    entry["pos"],
+                    self.all_sprites_group,
+                    self.enemy_group,
+                    enemy_id=entry["type"],
+                )
+
             entry["spawned"] = True

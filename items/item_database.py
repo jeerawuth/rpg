@@ -33,8 +33,13 @@ class ItemDatabase:
                 item_type="consumable",
                 max_stack=20,
                 icon_key="items/potion_small_01.png",
+
+                # ใช้ค่าพวกนี้สำหรับเอฟเฟกต์ใน ItemNode
+                heal_amount=50,        # ฟื้น HP 50 ต่อ 1 ชิ้น
+                use_on_pickup=True,    # เก็บแล้วใช้ทันที (ไม่เข้า inventory)
             )
         )
+
 
         # ---------- Weapons ----------
         # ดาบพื้นฐาน
@@ -79,6 +84,8 @@ class ItemDatabase:
                 icon_key="items/shield_01.png",
             )
         )
+
+
 
     # ------------------------------------------------------------------
     # ฟังก์ชันช่วยภายใน

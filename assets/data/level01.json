@@ -1893,6 +1893,12 @@
       "spawn_time": 0 
     },
     {
+    "item_id": "potion_small",
+    "pos": [276, 200],
+    "amount": 1,
+    "spawn_time": 0
+    },
+    {
       "item_id": "shield",
       "pos": [296, 376],
       "amount": 1,

@@ -149,6 +149,49 @@ class ItemNode(AnimatedNode):
         surf = pygame.Surface((24, 24), pygame.SRCALPHA)
         pygame.draw.circle(surf, (255, 215, 0), (12, 12), 10)
         return surf
+    
+    # ------------------------------------------------------------------
+    # เมื่อ player เก็บไอเท็มนี้
+    # ------------------------------------------------------------------
+    def on_pickup(self, player) -> bool:
+        """
+        ให้ GameScene เรียกฟังก์ชันนี้เมื่อ player ชนไอเท็ม
+
+        คืนค่า:
+            True  = ไอเท็มถูกใช้ทันที (ไม่ต้องเอาไปเก็บใน inventory)
+            False = ยังไม่ได้ใช้ → ให้ GameScene เอาไปเก็บใน inventory ต่อ
+        """
+        item_data: ItemBase = self.item
+
+        used_instant = False
+
+        # ---------- เคส: ใช้ทันที + ฟื้น HP ----------
+        heal_per_item = getattr(item_data, "heal_amount", 0)
+        use_on_pickup = getattr(item_data, "use_on_pickup", False)
+
+        if use_on_pickup and heal_per_item > 0:
+            total_heal = heal_per_item * max(1, self.amount)
+
+            # จัดการ HP ผ่าน player.stats โดยตรง (ไม่ต้องไปแก้ player_node)
+            stats = getattr(player, "stats", None)
+            if stats is not None:
+                old_hp = stats.hp
+                stats.hp = min(stats.max_hp, stats.hp + total_heal)
+                gained = stats.hp - old_hp
+
+                print(
+                    f"[ItemNode] {item_data.id} healed +{gained} HP "
+                    f"({old_hp} -> {stats.hp}/{stats.max_hp})"
+                )
+            else:
+                print("[ItemNode] WARNING: player ไม่มี stats, heal ไม่ได้")
+
+            used_instant = True
+
+        # อนาคต: เพิ่ม effect แบบอื่นในบล็อกนี้ได้ เช่น buff atk/def, เพิ่มเกราะ ฯลฯ
+
+        return used_instant
+
 
     # ------------------------------------------------------------------
     # UPDATE: ลอยดึ๋ง ๆ + ให้ AnimatedNode เปลี่ยนเฟรม
