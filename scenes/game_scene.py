@@ -6,27 +6,30 @@ import pygame
 from .base_scene import BaseScene
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
+from entities.item_node import ItemNode
 from combat.collision_system import handle_group_vs_group
+from combat.damage_system import DamagePacket  # แค่ type hint
 from world.level_data import load_level
 from world.tilemap import TileMap
+from world.spawn_manager import SpawnManager
 from core.camera import Camera
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
-from entities.item_node import ItemNode
 
 from .pause_scene import PauseScene
 from .inventory_scene import InventoryScene
 
-# Projectile vs Enemies
-from combat.damage_system import DamagePacket  # แค่ type hint
-
 
 class GameScene(BaseScene):
-    def __init__(self, game) -> None:
+    def __init__(self, game, level_id: str = "level01") -> None:
         super().__init__(game)
         self.font = pygame.font.Font(None, 32)
 
         # ---------- LEVEL / TILEMAP ----------
-        self.level_data = load_level("level01")
+        # โหลดข้อมูลเลเวลจากชื่อ (เช่น "level01", "level02")
+        self.level_data = load_level(level_id)
+        # ใช้ id จากไฟล์เป็นตัวจริง (กันกรณีสะกดผิดตอนเรียก)
+        self.level_id = self.level_data.id
+
         self.tilemap = TileMap(self.level_data, self.game.resources)
 
         # ---------- SPRITE GROUPS ----------
@@ -48,25 +51,21 @@ class GameScene(BaseScene):
             self.projectiles,
             self.all_sprites,
         )
-        
+
         # ให้ enemy / ระบบอื่น ๆ อ้างถึง player ได้ผ่าน self.game
         self.game.player = self.player
 
-        # ---------- ENEMIES ----------
-        for spawn in self.level_data.enemy_spawns:
-            enemy_type = spawn["type"]          # "goblin" หรือ "slime_green"
-            pos = tuple(spawn["pos"])           # [x, y] -> (x, y)
+        # ---------- ENEMIES (ใช้ SpawnManager จัดการ spawn) ----------
+        # SpawnManager จะอ่าน enemy_spawns จาก LevelData แล้วคอยสร้าง EnemyNode ตามเวลา (spawn_time)
+        # ถ้า enemy_spawns ไม่มี spawn_time จะถือว่า spawn_time = 0 (เกิดทันทีตอนเริ่มด่าน)
+        self.spawn_manager = SpawnManager(
+            self.game,
+            self.level_data,
+            self.enemies,
+            self.all_sprites,
+        )
 
-            EnemyNode(
-                self.game,
-                pos,
-                self.all_sprites,
-                self.enemies,
-                enemy_id=enemy_type,            # ให้ไป lookup ใน enemy_config.py
-            )
-
-
-        # ---------- ITEMS (ตาม level ที่่โหลดเข้ามา) ----------
+        # ---------- ITEMS (ตาม level ที่โหลดเข้ามา) ----------
         for spawn in self.level_data.item_spawns:
             pos = tuple(spawn["pos"])          # [x, y] -> (x, y)
             item_id = spawn["item_id"]
@@ -81,7 +80,6 @@ class GameScene(BaseScene):
                 self.items,
             )
 
-
         # ---------- CAMERA ----------
         self.camera = Camera(
             world_width=self.tilemap.pixel_width,
@@ -93,7 +91,9 @@ class GameScene(BaseScene):
             deadzone_height=SCREEN_HEIGHT // 2,
         )
 
-    
+        # ใช้กันไม่ให้ trigger เคลียร์ด่านซ้ำซ้อน
+        self._level_cleared = False
+
     # ---------- Helper: เลือกสีแท่ง HP ตามสัดส่วน ----------
     def _get_hp_color(self, ratio: float) -> tuple[int, int, int]:
         """
@@ -119,11 +119,8 @@ class GameScene(BaseScene):
         b = 0
         return (r, g, b)
 
-
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
-        
-
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -137,16 +134,20 @@ class GameScene(BaseScene):
 
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
-        # ถ้าคุณใช้ collisionRect จาก tilemap
+        # collisionRect จาก tilemap
         self.player.set_collision_rects(self.tilemap.collision_rects)
 
+        # อัปเดต sprite ทั้งหมด
         self.all_sprites.update(dt)
+
+        # อัปเดตการ spawn ศัตรูตามเวลา / wave
+        if hasattr(self, "spawn_manager"):
+            self.spawn_manager.update(dt)
 
         # อัปเดตกล้องให้ตาม player
         self.camera.update(self.player.rect, dt)
 
-        
-
+        # Projectile vs Enemies
         def on_projectile_hit(projectile, enemy):
             if not hasattr(enemy, "take_hit"):
                 return
@@ -159,7 +160,7 @@ class GameScene(BaseScene):
             on_hit=on_projectile_hit,
             kill_attack_on_hit=True,
         )
-        
+
         # Player vs Items (pickup)
         hits = pygame.sprite.spritecollide(self.player, self.items, dokill=True)
 
@@ -181,6 +182,32 @@ class GameScene(BaseScene):
             if leftover > 0:
                 print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
 
+        # ---------- เช็คจบด่าน & เปลี่ยนไป level ถัดไป ----------
+        # เงื่อนไข:
+        # - spawn_manager สร้างศัตรูทุกตัวที่อยู่ใน enemy_spawns ครบแล้ว (is_finished)
+        # - ศัตรูที่ถูกสร้างออกมาทั้งหมดถูกฆ่าหมดแล้ว (self.enemies ว่าง)
+        if (
+            not self._level_cleared
+            and hasattr(self, "spawn_manager")
+            and getattr(self.spawn_manager, "is_finished", False)
+            and len(self.enemies.sprites()) == 0
+        ):
+            self._level_cleared = True
+
+            # อ่าน next_level จาก LevelData (ถ้าไม่มี field นี้ จะได้ "" กลับมา)
+            next_id = getattr(self.level_data, "next_level", "") or ""
+
+            if next_id:
+                # มีด่านถัดไป -> สร้าง GameScene ใหม่ด้วย level_id ที่ JSON บอก
+                from .game_scene import GameScene  # import แบบ local กันวงวน
+                self.game.scene_manager.set_scene(
+                    GameScene(self.game, level_id=next_id)
+                )
+            else:
+                # ไม่มีด่านถัดไปแล้ว -> แล้วแต่ดีไซน์ (ตอนนี้แค่ print ไว้)
+                print("Stage clear! ไม่มีด่านถัดไปแล้ว")
+
+            return
 
     # ---------- DRAW ----------
     def draw(self, surface: pygame.Surface) -> None:
@@ -199,7 +226,7 @@ class GameScene(BaseScene):
 
             # ---------- วาดแถบ HP ของศัตรู ----------
             if isinstance(sprite, EnemyNode) and not sprite.is_dead:
-                ratio = sprite.hp_ratio   # ใช้ property ที่เราเพิ่มเมื่อกี้
+                ratio = sprite.hp_ratio   # ใช้ property hp_ratio ใน EnemyNode
 
                 # ขนาดแท่ง HP (สั้นกว่าตัว 50%)
                 full_width = sprite.rect.width
@@ -221,7 +248,6 @@ class GameScene(BaseScene):
                 hp_rect = pygame.Rect(bar_x, bar_y, hp_width, bar_height)
                 pygame.draw.rect(surface, hp_color, hp_rect)
 
-
         # HUD (วาดแบบ fixed screen)
         lines = [
             "Game Scene (Camera + Tilemap + Combat)",
@@ -232,4 +258,3 @@ class GameScene(BaseScene):
         for i, t in enumerate(lines):
             t_surf = self.font.render(t, True, (10, 10, 10))
             surface.blit(t_surf, (20, 20 + i * 24))
-

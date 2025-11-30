@@ -27,6 +27,16 @@ class LevelData:
     # { "item_id": "bow_power_1", "pos": [x, y], "amount": 1 }
     item_spawns: List[Dict[str, Any]]
 
+    # id ของเลเวลถัดไป (ไม่มีให้เป็น "")
+    next_level: str = ""
+
+    # enemy_spawns: list ของ dict เช่น { "type": "goblin", "pos": [x, y] }
+    enemy_spawns: List[Dict[str, Any]]
+
+    # item_spawns: list ของ dict เช่น
+    # { "item_id": "bow_power_1", "pos": [x, y], "amount": 1 }
+    item_spawns: List[Dict[str, Any]]
+
 
 
 def _get_data_dir() -> str:
@@ -136,8 +146,10 @@ def load_level(name: str) -> LevelData:
         width=raw["width"],
         height=raw["height"],
         layers=raw["layers"],
-        player_spawn=tuple(raw.get("player_spawn", (0, 0))),
+        player_spawn=tuple(raw["player_spawn"]),
         enemy_spawns=enemy_spawns,
         item_spawns=item_spawns,
+        next_level=raw.get("next_level", "")
     )
+
 
