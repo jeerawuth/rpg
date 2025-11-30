@@ -458,7 +458,7 @@ class PlayerNode(AnimatedNode):
         attack_rect = self._get_attack_rect()
 
 
-        RANGE = 32  # ระยะเอื้อมของดาบ
+        RANGE = 64  # ระยะเอื้อมของดาบ
 
         if abs(self.facing.x) > abs(self.facing.y):
             # ซ้าย–ขวา

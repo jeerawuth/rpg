@@ -1,7 +1,7 @@
 {
   "id": "level01",
-  "next_level": "level03",
-  "tileset": "overworld_tiles.png",
+  "next_level": "level05",
+  "tileset": "overworld_green_tiles.png",
   "tile_size": 32,
   "width": 40,
   "height": 22,
@@ -1870,7 +1870,7 @@
       "spawn_time": 0 
     },
     {
-      "type": "goblin",
+      "type": "orc",
       "pos": [976, 592],
       "spawn_time": 5 
     },
@@ -1888,7 +1888,7 @@
   "item_spawns": [
     {
       "item_id": "bow_power_1",
-      "pos": [276, 176], 
+      "pos": [376, 476], 
       "amount": 1,
       "spawn_time": 0 
     },
@@ -1896,19 +1896,19 @@
     "item_id": "potion_small",
     "pos": [276, 200],
     "amount": 1,
-    "spawn_time": 0
+    "spawn_time": 15
     },
     {
       "item_id": "shield",
       "pos": [296, 376],
       "amount": 1,
-      "spawn_time": 5 
+      "spawn_time": 15 
     },
     {
       "item_id": "shield",
       "pos": [876, 576],
       "amount": 3,
-      "spawn_time": 10
+      "spawn_time": 15
     }
   ]
 }

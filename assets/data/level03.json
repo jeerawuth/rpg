@@ -1,6 +1,6 @@
 {
   "id": "level03",
-  "next_level": "level02", 
+  "next_level": "level04", 
   "tileset": "overworld_tiles.png",
   "tile_size": 32,
   "width": 40,
@@ -1867,6 +1867,11 @@
     {
       "type": "goblin",
       "pos": [656, 375],
+      "spawn_time": 0 
+    },
+        {
+      "type": "orc",
+      "pos": [256, 575],
       "spawn_time": 0 
     }
   ],
