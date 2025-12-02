@@ -1870,29 +1870,19 @@
       "spawn_time": 0 
     },
     {
-      "type": "goblin",
-      "pos": [976, 592],
-      "spawn_time": 0 
-    },
-    {
       "type": "slime_green",
       "pos": [400, 455],
       "spawn_time": 0
     },
     {
-      "type": "slime_green",
+      "type": "orc",
       "pos": [200, 355],
       "spawn_time": 5 
     },
     {
-      "type": "slime_green",
+      "type": "orc",
       "pos": [800, 215],
       "spawn_time": 5 
-    },
-    {
-      "type": "goblin",
-      "pos": [600, 150],
-      "spawn_time": 10 
     },
     {
       "type": "goblin",
@@ -1917,28 +1907,23 @@
   ],
   "item_spawns": [
     {
-      "item_id": "bow_power_1",
-      "pos": [276, 176], 
-      "amount": 1,
-      "spawn_time": 0 
-    },
-    {
       "item_id": "potion_small",
       "pos": [296, 376],
       "amount": 1,
       "spawn_time": 0 
     },
-        {
+    {
       "item_id": "bow_power_1",
       "pos": [176, 476], 
       "amount": 1,
       "spawn_time": 10
     },
     {
-      "item_id": "potion_small",
-      "pos": [376, 376], 
+      "item_id"
+      : "potion_small",
+      "pos": [676, 376], 
       "amount": 1,
-      "spawn_time": 10
+      "spawn_time": 20
     }
   ]
 }

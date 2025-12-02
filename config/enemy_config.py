@@ -15,7 +15,7 @@ ENEMY_CONFIG: dict[str, dict] = {
             crit_chance=0.05,
             crit_multiplier=1.5,
         ),
-        "speed": 80,
+        "speed": 180,
         "move_range": 80,
         "aggro_radius": 200,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,

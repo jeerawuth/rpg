@@ -1,7 +1,7 @@
 {
   "id": "level01",
   "next_level": "level05",
-  "tileset": "overworld_green_tiles.png",
+  "tileset": "overworld_block_tiles.png",
   "tile_size": 32,
   "width": 40,
   "height": 22,
@@ -1865,7 +1865,7 @@
   ],
   "enemy_spawns": [
     {
-      "type": "goblin",
+      "type": "slime_green",
       "pos": [656, 375],
       "spawn_time": 0 
     },
@@ -1878,11 +1878,6 @@
       "type": "slime_green",
       "pos": [400, 455],
       "spawn_time": 10 
-    },
-    {
-      "type": "slime_green",
-      "pos": [200, 355],
-      "spawn_time": 10 
     }
   ],
   "item_spawns": [
@@ -1894,21 +1889,9 @@
     },
     {
     "item_id": "potion_small",
-    "pos": [276, 200],
+    "pos": [476, 400],
     "amount": 1,
-    "spawn_time": 15
-    },
-    {
-      "item_id": "shield",
-      "pos": [296, 376],
-      "amount": 1,
-      "spawn_time": 15 
-    },
-    {
-      "item_id": "shield",
-      "pos": [876, 576],
-      "amount": 3,
-      "spawn_time": 15
+    "spawn_time": 10
     }
   ]
 }

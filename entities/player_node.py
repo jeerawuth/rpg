@@ -138,7 +138,7 @@ class PlayerNode(AnimatedNode):
         self.collision_rects: list[pygame.Rect] = []
 
         # ---------- Shoot cooldown ----------
-        self.shoot_cooldown = 0.8
+        self.shoot_cooldown = 0.5
         self.shoot_timer = 0.0
 
         # ---------- Attack animation timer ----------
