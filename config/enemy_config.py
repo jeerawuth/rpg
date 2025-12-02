@@ -15,8 +15,8 @@ ENEMY_CONFIG: dict[str, dict] = {
             crit_chance=0.05,
             crit_multiplier=1.5,
         ),
-        "speed": 100,
-        "move_range": 80,
+        "speed": 90,
+        "move_range": 280,
         "aggro_radius": 200,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
@@ -32,7 +32,7 @@ ENEMY_CONFIG: dict[str, dict] = {
             crit_chance=0.05,
             crit_multiplier=1.5,
         ),
-        "speed": 120,
+        "speed": 100,
         "move_range": 800,
         "aggro_radius": 260,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
@@ -49,7 +49,7 @@ ENEMY_CONFIG: dict[str, dict] = {
             crit_chance=0.05,
             crit_multiplier=1.5,
         ),
-        "speed": 100,
+        "speed": 110,
         "move_range": 800,
         "aggro_radius": 260,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,

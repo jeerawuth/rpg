@@ -36,8 +36,11 @@ class InventoryScene(BaseScene):
                 elif event.key == pygame.K_RETURN:
                     self._handle_equip_selected()
 
+    # ----------------- LOGIC -----------------------
+    #---------- ฟังก์ชันจัดการ equip ไอเท็มที่เลือก ----------
+    # ----- เคสพิเศษ: ไอเท็มกดใช้ (ใช้แล้วหายไป) ----------
     def _handle_equip_selected(self) -> None:
-        """เลือกช่อง inventory ปัจจุบัน แล้วพยายาม equip ตามประเภทของไอเท็ม"""
+        """เลือกช่อง inventory ปัจจุบัน แล้วพยายาม equip หรือใช้ไอเท็ม"""
 
         inv = self.player.inventory
         eq = self.player.equipment
@@ -51,14 +54,30 @@ class InventoryScene(BaseScene):
 
         item = stack.item
 
+        # ---------- เคสพิเศษ: sword_all_direction = ไอเท็มกดใช้ ----------
+        if item.id == "sword_all_direction":
+            # ลบออกจากช่องปัจจุบัน 1 ชิ้น
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(self.selected_index, None)
+
+            # สั่งให้ player เปิดบัฟ 10 วินาที
+            if hasattr(self.player, "activate_sword_all_direction"):
+                self.player.activate_sword_all_direction(duration=10.0)
+
+            print("ใช้ไอเท็ม All Direction Sword (10 วินาที)")
+            # จะปิดหน้าต่าง inventory เลยก็ได้ ถ้าชอบ
+            # self.game.scene_manager.pop_scene()
+            return
+
+        # ---------- เคสทั่วไป: equip ตามประเภทของไอเท็ม ----------
         # ตัดสินใจว่าจะใส่ช่องไหนตามประเภทของไอเท็ม
         if item.item_type == "weapon":
             slot = "main_hand"
         elif item.item_type == "armor":
-            # armor (เช่น shield) ให้ใส่ช่อง armor
+            # ถ้าอยากแยก armor / off_hand เพิ่มเงื่อนไขได้
             slot = "armor"
         else:
-            # ยังไม่รองรับการ equip ไอเท็มประเภทอื่น (consumable, misc)
             print(f"Item '{item.name}' (type={item.item_type}) equip ไม่ได้")
             return
 
@@ -67,6 +86,7 @@ class InventoryScene(BaseScene):
             print(f"Equipped {item.name} -> slot {slot}")
         else:
             print(f"Equip {item.name} ล้มเหลว (slot={slot})")
+
 
     # ----------------- UPDATE / DRAW -----------------
     def update(self, dt: float) -> None:

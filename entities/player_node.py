@@ -149,6 +149,11 @@ class PlayerNode(AnimatedNode):
         self.debug_attack_timer: float = 0.0
         # ----- DEBUG melee hitbox effect -----
 
+        # ---------- Temporary weapon buff: sword_all_direction ----------
+        self.sword_all_dir_timer: float = 0.0
+        self.sword_all_dir_prev_main_hand: str | None = None
+
+
 
     # ============================================================
     # Animation loading
@@ -254,6 +259,58 @@ class PlayerNode(AnimatedNode):
                 self.stats.armor += 6
                 # self.stats.resistances["physical"] = \
                 #     self.stats.resistances.get("physical", 0.0) + 0.1
+
+    
+    # ============================================================
+    # Temporary weapon buff: sword_all_direction
+
+    def activate_sword_all_direction(self, duration: float = 10.0) -> None:
+        """
+        เปิดใช้ดาบตี 4 ทิศแบบมีเวลาจำกัด
+
+        - เก็บ main_hand เดิมไว้
+        - ใส่ sword_all_direction เป็นอาวุธหลัก
+        - นับเวลาถอยหลังด้วย self.sword_all_dir_timer
+        """
+        if getattr(self, "equipment", None) is None:
+            return
+
+        # ถ้ามีบัฟนี้อยู่แล้ว -> แค่รีเฟรชเวลา
+        if self.sword_all_dir_timer > 0:
+            self.sword_all_dir_timer = duration
+            return
+
+        # เก็บอาวุธเดิม (เก็บเป็น item_id ใน Equipment)
+        self.sword_all_dir_prev_main_hand = self.equipment.main_hand
+
+        # ใส่ดาบรอบทิศทาง
+        self.equipment.main_hand = "sword_all_direction"
+
+        # อัปเดต stats ใหม่ตามอุปกรณ์
+        self._recalc_stats_from_equipment()
+
+        # ตั้งเวลา
+        self.sword_all_dir_timer = duration
+
+    # ============================================================
+    # Update sword_all_direction buff
+    # ============================================================
+    def _update_sword_all_direction(self, dt: float) -> None:
+        """นับถอยหลังบัฟ sword_all_direction และคืนอาวุธเดิมเมื่อหมดเวลา"""
+        if self.sword_all_dir_timer <= 0:
+            return
+
+        self.sword_all_dir_timer -= dt
+        if self.sword_all_dir_timer <= 0:
+            self.sword_all_dir_timer = 0.0
+
+            # คืนอาวุธเดิม
+            if getattr(self, "equipment", None) is not None:
+                self.equipment.main_hand = self.sword_all_dir_prev_main_hand
+                self._recalc_stats_from_equipment()
+
+            self.sword_all_dir_prev_main_hand = None
+
 
     # ============================================================
     # Collision helper
@@ -674,6 +731,9 @@ class PlayerNode(AnimatedNode):
     def update(self, dt: float) -> None:
         # buff/debuff
         self.status.update(dt)
+
+        # นับเวลาบัฟดาบรอบทิศทาง
+        self._update_sword_all_direction(dt)
 
         # นับเวลาถูกโจมตี (ใช้เล่นแอนิเมชัน hurt)
         if getattr(self, "hurt_timer", 0.0) > 0:
