@@ -1,7 +1,7 @@
 {
-  "id": "level02",
-  "next_level": "level03", 
-  "tileset": "overworld_green_tiles.png",
+  "id": "level01",
+  "next_level": "level05",
+  "tileset": "overworld_block_tiles.png",
   "tile_size": 32,
   "width": 40,
   "height": 22,
@@ -1865,65 +1865,33 @@
   ],
   "enemy_spawns": [
     {
-      "type": "goblin",
+      "type": "slime_green",
       "pos": [656, 375],
       "spawn_time": 0 
     },
     {
-      "type": "slime_green",
-      "pos": [400, 455],
-      "spawn_time": 0
-    },
-    {
       "type": "orc",
-      "pos": [200, 355],
-      "spawn_time": 5 
-    },
-    {
-      "type": "orc",
-      "pos": [800, 215],
-      "spawn_time": 5 
-    },
-    {
-      "type": "goblin",
       "pos": [976, 592],
-      "spawn_time": 10
+      "spawn_time": 5 
     },
     {
       "type": "slime_green",
       "pos": [400, 455],
-      "spawn_time": 15 
-    },
-    {
-      "type": "orc",
-      "pos": [200, 355],
-      "spawn_time": 15 
-    },
-    {
-      "type": "slime_green",
-      "pos": [800, 215],
-      "spawn_time": 20 
+      "spawn_time": 10 
     }
   ],
   "item_spawns": [
     {
-      "item_id": "potion_small",
-      "pos": [296, 376],
+      "item_id": "bow_power_1",
+      "pos": [376, 476], 
       "amount": 1,
       "spawn_time": 0 
     },
     {
-      "item_id": "bow_power_1",
-      "pos": [176, 476], 
-      "amount": 1,
-      "spawn_time": 10
-    },
-    {
-      "item_id"
-      : "potion_small",
-      "pos": [676, 376], 
-      "amount": 1,
-      "spawn_time": 20
+    "item_id": "potion_small",
+    "pos": [476, 400],
+    "amount": 1,
+    "spawn_time": 10
     }
   ]
 }

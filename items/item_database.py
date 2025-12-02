@@ -54,6 +54,21 @@ class ItemDatabase:
             )
         )
 
+        # ดาบฟันรอบตัว
+        # แนะนำให้มีไฟล์:
+        #   assets/graphics/images/items/sword_all_direction_01.png
+        #   assets/graphics/images/items/sword_all_direction_02.png
+        self._register(
+            ItemBase(
+                id="sword_all_direction",
+                name="All Direction Sword",
+                description="ดาบรอบทิศทาง",
+                item_type="weapon",
+                max_stack=1,
+                icon_key="items/sword_all_direction.png",
+            )
+        )
+
         # ไอเท็มเพิ่มพลังโจมตีธนู (เวอร์ชันที่คุณใช้คือ bow_power_1)
         # แนะนำให้มีไฟล์:
         #   assets/graphics/images/items/bow_power_01.png
