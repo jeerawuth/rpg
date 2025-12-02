@@ -34,7 +34,7 @@ ENEMY_CONFIG: dict[str, dict] = {
         ),
         "speed": 100,
         "move_range": 800,
-        "aggro_radius": 260,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "aggro_radius": 600,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
     "orc": {
@@ -51,7 +51,24 @@ ENEMY_CONFIG: dict[str, dict] = {
         ),
         "speed": 110,
         "move_range": 800,
-        "aggro_radius": 260,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "xp_reward": 10,
+    },
+    "boss_orc": {
+        "sprite_id": "boss_orc",
+        "stats": Stats(
+            max_hp=250,
+            hp=300,
+            attack=35,
+            magic=0,
+            armor=3,
+            resistances={"fire": 0.2},
+            crit_chance=0.05,
+            crit_multiplier=1.5,
+        ),
+        "speed": 90,
+        "move_range": 800,
+        "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
     # เพิ่ม enemy ชนิดใหม่ได้เรื่อย ๆ
