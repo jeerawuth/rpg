@@ -321,6 +321,11 @@ class GameScene(BaseScene):
                 hp_rect = pygame.Rect(bar_x, bar_y, hp_width, bar_height)
                 pygame.draw.rect(surface, hp_color, hp_rect)
 
+        # วาดเลเยอร์ foreground (ถ้ามี) ให้อยู่หน้าตัวละคร แต่หลังพื้นหลัง
+        if hasattr(self.tilemap, "draw_foreground"):
+            self.tilemap.draw_foreground(surface, camera_offset=offset)
+
+
         # HUD (วาดแบบ fixed screen)
         lines = [
             "Game Scene (Camera + Tilemap + Combat)",
