@@ -27,6 +27,10 @@ class LevelData:
     # { "item_id": "bow_power_1", "pos": [x, y], "amount": 1 }
     item_spawns: List[Dict[str, Any]]
 
+    # decor_spawns: list ของ dict เช่น
+    # { "image": "images/decors/tree_01.png", "pos": [x, y], "anchor": "midbottom" }
+    decor_spawns: List[Dict[str, Any]]
+
     # id ของเลเวลถัดไป (ไม่มีให้เป็น "")
     next_level: str = ""
 
@@ -137,6 +141,39 @@ def load_level(name: str) -> LevelData:
                 "pos": [x, y],
                 "amount": 1,
             })
+    
+    # ---------- decor_spawns ----------
+    # รูปแบบที่ใช้ใน level0x.json:
+    #   "decor_spawns": [
+    #     { "image": "images/decors/tree_01.png", "pos": [400, 455], "anchor": "midbottom" },
+    #     { "image": "images/decors/rock_01.png",  "pos": [350, 420], "anchor": "topleft"   }
+    #   ]
+    raw_decor_spawns = raw.get("decor_spawns", [])
+
+    decor_spawns: List[Dict[str, Any]] = []
+    for entry in raw_decor_spawns:
+        if isinstance(entry, dict):
+            image = entry.get("image", "")
+            pos = entry.get("pos", [0, 0])
+            anchor = entry.get("anchor", "topleft")
+            scale = entry.get("scale", 1.0)        # ← ดึง scale ถ้ามี
+        else:
+            # เผื่ออนาคตจะรองรับ list: [x, y, "images/decors/tree_01.png", "midbottom", 1.5]
+            if len(entry) >= 3:
+                x, y, image = entry[:3]
+                pos = [x, y]
+                anchor = entry[3] if len(entry) >= 4 else "topleft"
+                scale = entry[4] if len(entry) >= 5 else 1.0
+            else:
+                continue
+
+        decor_spawns.append({
+            "image": image,
+            "pos": pos,
+            "anchor": anchor,
+            "scale": scale,                        # ← เก็บ scale เข้า dict
+        })
+
 
 
     return LevelData(
@@ -149,6 +186,7 @@ def load_level(name: str) -> LevelData:
         player_spawn=tuple(raw["player_spawn"]),
         enemy_spawns=enemy_spawns,
         item_spawns=item_spawns,
+        decor_spawns=decor_spawns,
         next_level=raw.get("next_level", "")
     )
 

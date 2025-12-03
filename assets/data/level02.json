@@ -92,6 +92,6 @@
   "item_spawns": [
     { "item_id": "bow_power_1",  "pos": [376, 476], "amount": 1, "spawn_time": 0 },
     { "item_id": "potion_small", "pos": [476, 400], "amount": 1, "spawn_time": 10 },
-    { "item_id": "sword_all_direction", "pos": [800, 600], "amount": 2, "spawn_time": 5 }
+    { "item_id": "sword_all_direction", "pos": [800, 600], "amount": 1, "spawn_time": 5 }
   ]
 }

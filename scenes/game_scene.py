@@ -9,6 +9,8 @@ from entities.enemy_node import EnemyNode
 from combat.collision_system import handle_group_vs_group
 from world.level_data import load_level
 from world.tilemap import TileMap
+from entities.decoration_node import DecorationNode
+
 from world.spawn_manager import SpawnManager
 from core.camera import Camera
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
@@ -47,11 +49,14 @@ class GameScene(BaseScene):
         self.enemies = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
         self.items = pygame.sprite.Group()          # สำหรับไอเท็มที่วางในฉาก
+        self.decorations = pygame.sprite.Group()    # ของตกแต่งฉาก (ต้นไม้ ก้อนหิน ฯลฯ)
 
         # ให้ object อื่นอ้างถึงได้ (ProjectileNode ฯลฯ)
         self.game.all_sprites = self.all_sprites
         self.game.enemies = self.enemies
         self.game.projectiles = self.projectiles
+        self.game.decorations = self.decorations
+
 
         # ---------- PLAYER ----------
         player_spawn = self.level_data.player_spawn
@@ -88,6 +93,25 @@ class GameScene(BaseScene):
                 self.all_sprites,
                 self.items,
             )
+
+        # ---------- DECORATIONS (ของตกแต่งฉาก) ----------
+        for spawn in getattr(self.level_data, "decor_spawns", []):
+            pos = tuple(spawn["pos"])
+            image = spawn["image"]
+            anchor = spawn.get("anchor", "topleft")
+            scale = spawn.get("scale", 1.0)
+
+            DecorationNode(
+                self.game.resources,   # rm
+                pos,                   # pos
+                image,                 # image_path
+                anchor,                # anchor  (ไม่ต้องใช้ anchor=anchor แล้ว)
+                scale,                 # scale   (ไม่ต้องใช้ scale=scale แล้ว)
+                self.all_sprites,      # groups...
+                self.decorations,
+            )
+
+
 
         # ---------- CAMERA ----------
         self.camera = Camera(
