@@ -213,6 +213,7 @@ class PlayerNode(AnimatedNode):
             if frames:
                 self.bow_attack_animations[direction] = frames
 
+
     # ============================================================
     # Equipment / Stats
     # ============================================================
@@ -386,15 +387,12 @@ class PlayerNode(AnimatedNode):
 
 
     def _update_animation_state(self) -> None:
-        # อัปเดตทิศทางจาก vector การหัน (รองรับ 8 ทิศ)
+        # ---------- อัปเดตทิศทางจาก vector การหัน (รองรับ 8 ทิศ) ----------
         x, y = self.facing.x, self.facing.y
 
-        # ถ้าไม่ขยับเลย ให้ใช้ทิศเดิม (direction เดิม)
-        if x == 0 and y == 0:
-            pass
-        else:
-            # ถ้าทั้ง x และ y มีค่าสูง แปลว่ากด 2 ปุ่มพร้อมกัน -> ทแยง
-            DIAGONAL_THRESHOLD = 0.35
+        # ถ้าไม่ขยับเลย ให้ใช้ทิศเดิม
+        if not (x == 0 and y == 0):
+            DIAGONAL_THRESHOLD = 0.35  # ค่าประมาณว่า "เอียงพอเป็นทแยง"
 
             if abs(x) >= DIAGONAL_THRESHOLD and abs(y) >= DIAGONAL_THRESHOLD:
                 # ทิศทแยง
@@ -405,25 +403,44 @@ class PlayerNode(AnimatedNode):
                     # ลง
                     self.direction = "down_right" if x > 0 else "down_left"
             else:
-                # ทิศหลัก 4 ทิศ (กรณีเกือบจะตรงแนวแกนเดียว)
+                # ทิศหลัก 4 ทิศ
                 if abs(x) > abs(y):
                     self.direction = "right" if x > 0 else "left"
                 else:
                     self.direction = "down" if y >= 0 else "up"
 
-        # ===== จากตรงนี้ล่าง ใช้ logic เดิมของคุณได้เลย =====
-        # ลำดับความสำคัญ: dead > hurt > attack > walk/idle
-
+        # ---------- เลือก state ตาม priority ----------
         # 1) dead
         if getattr(self, "is_dead", False) and ("dead", self.direction) in self.animations:
             self.state = "dead"
             return
 
-        # 2) hurt, 3) attack, 4) walk/idle
-        ...
+        # 2) hurt
+        if getattr(self, "hurt_timer", 0.0) > 0 and ("hurt", self.direction) in self.animations:
+            self.state = "hurt"
+            return
+
+        # 3) attack (ใช้ attack_timer เป็นตัวล็อกเวลา)
+        if getattr(self, "attack_timer", 0.0) > 0:
+            # มีท่าฟันแบบใกล้ (attack_*)
+            has_melee = ("attack", self.direction) in self.animations
+            # หรือมีท่ายิงธนู (attack_arrow_*)
+            has_bow = self.direction in getattr(self, "bow_attack_animations", {})
+
+            if has_melee or has_bow:
+                self.state = "attack"
+                return
 
 
+        # 4) walk / idle
+        if self.velocity.length_squared() > 0:
+            self.state = "walk"
+        else:
+            self.state = "idle"
 
+
+    # ฟันได้ทุกทิศ (8 ทิศ) แต่ถ้าไม่มีไฟล์ทิศทแยง
+    # จะ fallback ไปใช้ทิศหลักแทน (up/down)
 
     def _apply_animation(self) -> None:
         state = self.state
@@ -431,7 +448,7 @@ class PlayerNode(AnimatedNode):
 
         frames: list[pygame.Surface] | None = None
 
-        # mapping ทิศทแยง -> ทิศหลัก สำหรับ fallback
+        # mapping ทิศทแยง -> ทิศหลัก (เอาไว้ fallback ถ้าไม่มีไฟล์)
         diag_to_cardinal = {
             "up_left": "up",
             "up_right": "up",
@@ -439,7 +456,7 @@ class PlayerNode(AnimatedNode):
             "down_right": "down",
         }
 
-        # -------- กรณีโจมตีด้วยธนู --------
+        # ---------- กรณีโจมตีด้วยธนู ----------
         if state == "attack" and getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
 
@@ -449,24 +466,23 @@ class PlayerNode(AnimatedNode):
                 and weapon.id.startswith("bow_")
                 and hasattr(self, "bow_attack_animations")
             ):
-                # พยายามใช้ทิศตรงก่อน
+                # พยายามใช้ทิศตรงก่อน (รวมถึง up_left, down_right, ...)
                 frames = self.bow_attack_animations.get(direction)
 
-                # ถ้าไม่มีเฟรมสำหรับทิศทแยง -> fallback เป็น 4 ทิศ
+                # ถ้าไม่มีเฟรมสำหรับทิศทแยง -> ลองใช้ทิศหลักแทน (up/down)
                 if frames is None and direction in diag_to_cardinal:
                     fallback_dir = diag_to_cardinal[direction]
                     frames = self.bow_attack_animations.get(fallback_dir)
 
-        # -------- กรณีปกติ (ทุก state) --------
+        # ---------- กรณีปกติ (ทุก state) ----------
         if frames is None:
             frames = self.animations.get((state, direction))
 
-            # ถ้าเป็นทิศทแยงและไม่มีเฟรม -> ลองใช้ทิศหลักแทน
+            # ถ้าเป็นทิศทแยงและไม่มีเฟรม -> ลองใช้เฟรมทิศหลักแทน
             if not frames and direction in diag_to_cardinal:
                 fallback_dir = diag_to_cardinal[direction]
                 frames = self.animations.get((state, fallback_dir))
 
-        # ถ้าไม่มีเฟรมจริง ๆ ก็ไม่เปลี่ยนภาพ
         if not frames:
             return
 
@@ -499,42 +515,43 @@ class PlayerNode(AnimatedNode):
     
 
     # คำนวณกรอบโจมตีสำหรับฟันระยะใกล้
-    def _get_attack_rect(self, facing=None) -> pygame.Rect:
-        RANGE = 48  # ระยะยื่นออกจากตัวละคร
-
-        # ถ้าไม่ระบุ facing มา ให้ใช้ self.facing เหมือนเดิม
+    def _get_attack_rect(
+        self,
+        facing: pygame.Vector2 | None = None,
+        distance: float = 64.0,
+    ) -> pygame.Rect:
+        """
+        คำนวณกรอบโจมตีสำหรับฟันระยะใกล้
+        - ใช้เวกเตอร์ทิศทาง (facing) รองรับทุกมุม (รวมถึง 8 ทิศ)
+        - distance = ระยะจาก center ของ player → center ของ hitbox
+        """
         if facing is None:
             facing = self.facing
 
-        # โจมตีตามแกนที่หันหน้าอยู่มากที่สุด (เหมือนของเดิม)
-        if abs(facing.x) > abs(facing.y):
-            # ----- โจมตีซ้าย–ขวา -----
-            width = RANGE
-            height = self.rect.height
+        # ถ้าไม่มีทิศ (ยืนนิ่ง) ให้สมมติว่าหันลง
+        if not isinstance(facing, pygame.Vector2) or facing.length_squared() == 0:
+            facing = pygame.Vector2(0, 1)
 
-            attack_rect = pygame.Rect(0, 0, width, height)
+        # ทำให้เป็นเวกเตอร์หน่วย (ยาว = 1)
+        dir_vec = facing.normalize()
 
-            if facing.x > 0:
-                # ฟันขวา: ให้สี่เหลี่ยมติดขอบขวาของตัวละคร
-                attack_rect.midleft = self.rect.midright
-            else:
-                # ฟันซ้าย: ให้สี่เหลี่ยมติดขอบซ้ายของตัวละคร
-                attack_rect.midright = self.rect.midleft
-        else:
-            # ----- โจมตีบน–ล่าง -----
-            width = self.rect.width
-            height = RANGE
+        # ขนาด hitbox (ทำเป็นสี่เหลี่ยมจัตุรัส ใช้ได้ทุกมุม)
+        size = distance
+        attack_rect = pygame.Rect(0, 0, size, size)
 
-            attack_rect = pygame.Rect(0, 0, width, height)
+        # จุดกลางของตัวละคร
+        cx, cy = self.rect.center
 
-            if facing.y > 0:
-                # ฟันล่าง: สี่เหลี่ยมติดขอบล่าง
-                attack_rect.midtop = self.rect.midbottom
-            else:
-                # ฟันบน: สี่เหลี่ยมติดขอบบน
-                attack_rect.midbottom = self.rect.midtop
+        # ระยะ offset จากตัวละคร → center ของ hitbox
+        half_body = max(self.rect.width, self.rect.height) * 0.5
+        half_hit = size * 0.5
+        offset = half_body + half_hit
+
+        attack_rect.centerx = cx + dir_vec.x * offset
+        attack_rect.centery = cy + dir_vec.y * offset
 
         return attack_rect
+
 
     
     # การโจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
@@ -550,7 +567,7 @@ class PlayerNode(AnimatedNode):
         # ตั้ง state เป็น attack เพื่อเล่น animation ถ้ามี
         self.state = "attack"
         # ล็อกสถานะโจมตีช่วงสั้น ๆ เพื่อให้เห็นท่าฟันครบ
-        self.attack_timer = 0.25
+        self.attack_timer = 1.0
 
         # ดูว่าในมือถืออาวุธอะไรอยู่
         weapon_id = None
@@ -567,10 +584,10 @@ class PlayerNode(AnimatedNode):
             scaling_attack=1.0,
         )
 
-        RANGE = 64  # ระยะเอื้อมของดาบ
+        RANGE = 48  # ระยะเอื้อมของดาบ
 
         # ============================================================
-        # กรณี sword_all_direction -> ฟัน 4 ทิศทาง
+        # กรณี sword_all_direction -> ฟัน 4 ทิศทางรอบตัว
         # ============================================================
         if weapon_id == "sword_all_direction":
             from pygame.math import Vector2
@@ -585,28 +602,14 @@ class PlayerNode(AnimatedNode):
             attack_rects: list[pygame.Rect] = []
 
             for dir_vec in directions:
-                # ใช้ helper ตัวเดิม แต่บังคับทิศเอง
-                attack_rect = self._get_attack_rect(facing=dir_vec)
-
-                # ดันกรอบออกจากตัวละครเพิ่มตาม RANGE (เหมือน logic เดิม)
-                if abs(dir_vec.x) > abs(dir_vec.y):
-                    # ซ้าย–ขวา
-                    if dir_vec.x > 0:
-                        attack_rect.x += attack_rect.width   # ขวา
-                    else:
-                        attack_rect.x -= RANGE               # ซ้าย
-                else:
-                    # บน–ล่าง
-                    if dir_vec.y > 0:
-                        attack_rect.y += attack_rect.height  # ล่าง
-                    else:
-                        attack_rect.y -= RANGE               # บน
+                # ใช้ helper แบบใหม่: จะวาง hitbox ออกไปตามทิศ dir_vec
+                attack_rect = self._get_attack_rect(facing=dir_vec, distance=RANGE)
 
                 # ขยายกรอบให้ใหญ่ขึ้นหน่อย
                 attack_rect.inflate_ip(10, 10)
                 attack_rects.append(attack_rect)
 
-                # แปลง Vector2 -> ชื่อทิศทางสำหรับโหลดรูป
+                # เลือกทิศของเอฟเฟกต์ตาม dir_vec (ยังเป็น 4 ทิศเหมือนเดิม)
                 if dir_vec.x > 0:
                     slash_dir = "right"
                 elif dir_vec.x < 0:
@@ -616,15 +619,12 @@ class PlayerNode(AnimatedNode):
                 else:
                     slash_dir = "up"
 
-                # ตอนนี้จะไปโหลด:
-                # effects/slash_right_01.png / effects/slash_left_01.png ฯลฯ
                 SlashEffectNode(
                     self.game,
                     attack_rect,
                     slash_dir,
                     self.game.all_sprites,
                 )
-
 
             # เช็คศัตรู: ถ้าโดนสักทิศก็ให้โดนดาเมจครั้งเดียว
             hit_enemies = set()
@@ -634,7 +634,8 @@ class PlayerNode(AnimatedNode):
                         if enemy not in hit_enemies:
                             enemy.take_hit(self.stats, packet)
                             hit_enemies.add(enemy)
-                        break  # ศัตรูตัวนี้โดนแล้ว ไม่ต้องเช็ค rect อื่นต่อ
+                        break
+
 
         # ============================================================
         # กรณีอาวุธอื่น -> ฟันทิศเดียว (เหมือนของเดิม)
@@ -707,7 +708,7 @@ class PlayerNode(AnimatedNode):
 
         # ให้ตัวละครเล่นท่า "โจมตี" ช่วงสั้น ๆ (เอาไว้เลือกเฟรม attack_arrow)
         self.state = "attack"
-        self.attack_timer = 0.25
+        self.attack_timer = 1.0
 
         # ตั้ง cooldown การยิง
         self.shoot_timer = self.shoot_cooldown
