@@ -518,7 +518,7 @@ class PlayerNode(AnimatedNode):
     def _get_attack_rect(
         self,
         facing: pygame.Vector2 | None = None,
-        distance: float = 64.0,
+        distance: float = 48.0,
     ) -> pygame.Rect:
         """
         คำนวณกรอบโจมตีสำหรับฟันระยะใกล้
@@ -553,7 +553,6 @@ class PlayerNode(AnimatedNode):
         return attack_rect
 
 
-    
     # การโจมตีระยะใกล้ (ฟันดาบ / ต่อยมือเปล่า)
     def _melee_slash(self) -> None:
         """
@@ -564,20 +563,24 @@ class PlayerNode(AnimatedNode):
         # เล่นเสียงฟัน
         if hasattr(self, "sfx_slash"):
             self.sfx_slash.play()
+
         # ตั้ง state เป็น attack เพื่อเล่น animation ถ้ามี
         self.state = "attack"
-        # ล็อกสถานะโจมตีช่วงสั้น ๆ เพื่อให้เห็นท่าฟันครบ
-        self.attack_timer = 1.0
+        # ระยะเวลาค้างอยู่ในท่าโจมตี (ปรับได้ตามที่คุณต้องการ)
+        # ถ้าคุณอยากให้ 2 วินาที ก็เปลี่ยนเป็น 2.0
+        self.attack_timer = 0.25
 
-        # ดูว่าในมือถืออาวุธอะไรอยู่
-        weapon_id = None
+        # ดูว่าในมือมีอาวุธอะไรอยู่
+        weapon_id: str | None = None
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
             if weapon and weapon.item_type == "weapon":
                 weapon_id = weapon.id
 
+        # ดาเมจพื้นฐานจากอาวุธ/ตัวละคร
         base_damage = self._get_current_weapon_base_damage()
 
+        # ใช้ DamagePacket เหมือน projectile
         packet = DamagePacket(
             base=base_damage,
             damage_type="physical",
@@ -587,38 +590,59 @@ class PlayerNode(AnimatedNode):
         RANGE = 48  # ระยะเอื้อมของดาบ
 
         # ============================================================
-        # กรณี sword_all_direction -> ฟัน 4 ทิศทางรอบตัว
+        # กรณีดาบฟันรอบทิศทาง -> ฟันไล่ครบ 8 ทิศตามลำดับวงกลม
         # ============================================================
         if weapon_id == "sword_all_direction":
             from pygame.math import Vector2
 
-            directions = [
-                Vector2(1, 0),    # ขวา
-                Vector2(-1, 0),   # ซ้าย
-                Vector2(0, -1),   # บน
-                Vector2(0, 1),    # ล่าง
+            # ไล่ทิศตามลำดับ: up → up_right → right → down_right → down → down_left → left → up_left
+            directions: list[Vector2] = [
+                Vector2(0, -1),    # up
+                Vector2(1, -1),    # up_right
+                Vector2(1, 0),     # right
+                Vector2(1, 1),     # down_right
+                Vector2(0, 1),     # down
+                Vector2(-1, 1),    # down_left
+                Vector2(-1, 0),    # left
+                Vector2(-1, -1),   # up_left
+            ]
+
+            dir_names: list[str] = [
+                "up",
+                "up_right",
+                "right",
+                "down_right",
+                "down",
+                "down_left",
+                "left",
+                "up_left",
             ]
 
             attack_rects: list[pygame.Rect] = []
 
-            for dir_vec in directions:
-                # ใช้ helper แบบใหม่: จะวาง hitbox ออกไปตามทิศ dir_vec
-                attack_rect = self._get_attack_rect(facing=dir_vec, distance=RANGE)
+            # จุดกลางตัวละคร
+            cx, cy = self.rect.center
+            size = RANGE
+            # ระยะจาก center ตัวละคร → center hitbox
+            offset = max(self.rect.width, self.rect.height) + size
 
-                # ขยายกรอบให้ใหญ่ขึ้นหน่อย
+            for dir_vec, slash_dir in zip(directions, dir_names):
+                if dir_vec.length_squared() == 0:
+                    continue
+
+                dir_norm = dir_vec.normalize()
+
+                # สร้างกรอบสี่เหลี่ยมเป็น hitbox
+                attack_rect = pygame.Rect(0, 0, size, size)
+                attack_rect.centerx = cx + dir_norm.x * offset
+                attack_rect.centery = cy + dir_norm.y * offset
+
+                # ขยายกรอบอีกหน่อยให้ตีโดนง่ายขึ้น
                 attack_rect.inflate_ip(10, 10)
                 attack_rects.append(attack_rect)
 
-                # เลือกทิศของเอฟเฟกต์ตาม dir_vec (ยังเป็น 4 ทิศเหมือนเดิม)
-                if dir_vec.x > 0:
-                    slash_dir = "right"
-                elif dir_vec.x < 0:
-                    slash_dir = "left"
-                elif dir_vec.y > 0:
-                    slash_dir = "down"
-                else:
-                    slash_dir = "up"
-
+                # เอฟเฟกต์ slash ตามทิศนั้น ๆ
+                # ต้องมีไฟล์ effects/slash_<slash_dir>_01.png เช่น slash_up_right_01.png
                 SlashEffectNode(
                     self.game,
                     attack_rect,
@@ -626,22 +650,21 @@ class PlayerNode(AnimatedNode):
                     self.game.all_sprites,
                 )
 
-            # เช็คศัตรู: ถ้าโดนสักทิศก็ให้โดนดาเมจครั้งเดียว
-            hit_enemies = set()
+            # เช็คศัตรู: ถ้าโดนทิศไหนก็ให้โดนแค่ครั้งเดียวในรอบนี้
+            hit_enemies: set = set()
             for enemy in self.game.enemies.sprites():
                 for rect in attack_rects:
                     if rect.colliderect(enemy.rect):
                         if enemy not in hit_enemies:
                             enemy.take_hit(self.stats, packet)
                             hit_enemies.add(enemy)
-                        break
-
+                        break  # ศัตรูตัวนี้โดนแล้ว ไม่ต้องเช็ค rect อื่นต่อ
 
         # ============================================================
         # กรณีอาวุธอื่น -> ฟันทิศเดียว (เหมือนของเดิม)
         # ============================================================
         else:
-            # สร้างกรอบระยะการโจมตีด้วยการฟันดาบแบบสมมาตร
+            # สร้างกรอบระยะการโจมตีด้วยการฟันดาบแบบสมมาตร (ใช้ helper เดิม)
             attack_rect = self._get_attack_rect()
 
             if abs(self.facing.x) > abs(self.facing.y):
@@ -660,12 +683,12 @@ class PlayerNode(AnimatedNode):
             # ขยายกรอบให้ใหญ่ขึ้นหน่อย
             attack_rect.inflate_ip(10, 10)
 
-            # สร้างเอฟเฟกต์ตีดาบ (slash) ให้เห็นระยะ
+            # เอฟเฟกต์ฟันดาบตามทิศที่ player หันอยู่
             SlashEffectNode(
                 self.game,
                 attack_rect,
-                self.direction,            # ใช้ทิศเดียวกับ anim player
-                self.game.all_sprites,     # ใส่ใน all_sprites ก็พอ
+                self.direction,
+                self.game.all_sprites,
             )
 
             # เช็คทุก enemy ว่าโดนฟันไหม
@@ -673,8 +696,9 @@ class PlayerNode(AnimatedNode):
                 if attack_rect.colliderect(enemy.rect):
                     enemy.take_hit(self.stats, packet)
 
-        # cooldown โจมตี
+        # cooldown โจมตี (ใช้ตัวเดิมของคุณ)
         self.shoot_timer = self.shoot_cooldown
+
 
 
 

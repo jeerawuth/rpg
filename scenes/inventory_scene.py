@@ -61,9 +61,9 @@ class InventoryScene(BaseScene):
             if stack.quantity <= 0:
                 inv.set(self.selected_index, None)
 
-            # สั่งให้ player เปิดบัฟ 10 วินาที
+            # สั่งให้ player เปิดบัฟ 20 วินาที
             if hasattr(self.player, "activate_sword_all_direction"):
-                self.player.activate_sword_all_direction(duration=10.0)
+                self.player.activate_sword_all_direction(duration=20.0)
 
             print("ใช้ไอเท็ม All Direction Sword (10 วินาที)")
             # จะปิดหน้าต่าง inventory เลยก็ได้ ถ้าชอบ
