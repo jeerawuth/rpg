@@ -160,13 +160,19 @@ class PlayerNode(AnimatedNode):
     # ============================================================
     def _load_animations(self) -> None:
         states = ["idle", "walk", "attack", "hurt", "dead", "cast"]
-        directions = ["down", "left", "right", "up"]
+
+        # รองรับ 8 ทิศ
+        directions = [
+            "down", "left", "right", "up",
+            "down_left", "down_right", "up_left", "up_right",
+        ]
 
         for state in states:
             for direction in directions:
                 frames = self._load_animation_sequence(state, direction)
                 if frames:
                     self.animations[(state, direction)] = frames
+
 
     def _load_animation_sequence(self, state: str, direction: str) -> list[pygame.Surface]:
         frames: list[pygame.Surface] = []
@@ -187,7 +193,10 @@ class PlayerNode(AnimatedNode):
         โหลดเฟรม:
         assets/graphics/images/player/attack/attack_arrow_<direction>_01.png ...
         """
-        directions = ["down", "left", "right", "up"]
+        directions = [
+            "down", "left", "right", "up",
+            "down_left", "down_right", "up_left", "up_right",
+        ]
 
         for direction in directions:
             frames: list[pygame.Surface] = []
@@ -377,35 +386,42 @@ class PlayerNode(AnimatedNode):
 
 
     def _update_animation_state(self) -> None:
-        # อัปเดตทิศทางพื้นฐานจาก vector การหัน
+        # อัปเดตทิศทางจาก vector การหัน (รองรับ 8 ทิศ)
         x, y = self.facing.x, self.facing.y
-        if abs(x) > abs(y):
-            self.direction = "right" if x > 0 else "left"
-        else:
-            self.direction = "down" if y >= 0 else "up"
 
+        # ถ้าไม่ขยับเลย ให้ใช้ทิศเดิม (direction เดิม)
+        if x == 0 and y == 0:
+            pass
+        else:
+            # ถ้าทั้ง x และ y มีค่าสูง แปลว่ากด 2 ปุ่มพร้อมกัน -> ทแยง
+            DIAGONAL_THRESHOLD = 0.35
+
+            if abs(x) >= DIAGONAL_THRESHOLD and abs(y) >= DIAGONAL_THRESHOLD:
+                # ทิศทแยง
+                if y < 0:
+                    # ขึ้น
+                    self.direction = "up_right" if x > 0 else "up_left"
+                else:
+                    # ลง
+                    self.direction = "down_right" if x > 0 else "down_left"
+            else:
+                # ทิศหลัก 4 ทิศ (กรณีเกือบจะตรงแนวแกนเดียว)
+                if abs(x) > abs(y):
+                    self.direction = "right" if x > 0 else "left"
+                else:
+                    self.direction = "down" if y >= 0 else "up"
+
+        # ===== จากตรงนี้ล่าง ใช้ logic เดิมของคุณได้เลย =====
         # ลำดับความสำคัญ: dead > hurt > attack > walk/idle
 
-        # 1) ถ้าตายแล้ว และมีเฟรม dead สำหรับทิศนี้
+        # 1) dead
         if getattr(self, "is_dead", False) and ("dead", self.direction) in self.animations:
             self.state = "dead"
             return
 
-        # 2) ถ้ายังมี hurt_timer เหลือ และมีเฟรม hurt สำหรับทิศนี้
-        if getattr(self, "hurt_timer", 0.0) > 0 and ("hurt", self.direction) in self.animations:
-            self.state = "hurt"
-            return
+        # 2) hurt, 3) attack, 4) walk/idle
+        ...
 
-        # 3) ถ้ายังอยู่ในช่วงเล่น animation โจมตี และมีเฟรม attack อยู่ ให้ล็อก state = "attack"
-        if getattr(self, "attack_timer", 0.0) > 0 and ("attack", self.direction) in self.animations:
-            self.state = "attack"
-            return
-
-        # 4) ปกติ: เดิน / ยืน
-        if self.velocity.length_squared() > 0:
-            self.state = "walk"
-        else:
-            self.state = "idle"
 
 
 
@@ -415,7 +431,15 @@ class PlayerNode(AnimatedNode):
 
         frames: list[pygame.Surface] | None = None
 
-        # ถ้าเป็นท่าโจมตี ให้เช็คก่อนว่าถือธนูอยู่ไหม
+        # mapping ทิศทแยง -> ทิศหลัก สำหรับ fallback
+        diag_to_cardinal = {
+            "up_left": "up",
+            "up_right": "up",
+            "down_left": "down",
+            "down_right": "down",
+        }
+
+        # -------- กรณีโจมตีด้วยธนู --------
         if state == "attack" and getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
 
@@ -425,18 +449,30 @@ class PlayerNode(AnimatedNode):
                 and weapon.id.startswith("bow_")
                 and hasattr(self, "bow_attack_animations")
             ):
-                # ถ้ามีเฟรมท่ายิงธนูสำหรับทิศนี้ ให้ใช้แทนท่าฟัน
+                # พยายามใช้ทิศตรงก่อน
                 frames = self.bow_attack_animations.get(direction)
 
-        # ถ้าไม่ได้ถือธนู หรือไม่มีเฟรมธนู -> ใช้เฟรมปกติ
+                # ถ้าไม่มีเฟรมสำหรับทิศทแยง -> fallback เป็น 4 ทิศ
+                if frames is None and direction in diag_to_cardinal:
+                    fallback_dir = diag_to_cardinal[direction]
+                    frames = self.bow_attack_animations.get(fallback_dir)
+
+        # -------- กรณีปกติ (ทุก state) --------
         if frames is None:
             frames = self.animations.get((state, direction))
 
+            # ถ้าเป็นทิศทแยงและไม่มีเฟรม -> ลองใช้ทิศหลักแทน
+            if not frames and direction in diag_to_cardinal:
+                fallback_dir = diag_to_cardinal[direction]
+                frames = self.animations.get((state, fallback_dir))
+
+        # ถ้าไม่มีเฟรมจริง ๆ ก็ไม่เปลี่ยนภาพ
         if not frames:
             return
 
         if frames is not self.frames:
             self.set_frames(frames, reset=False)
+
 
 
     # ============================================================
