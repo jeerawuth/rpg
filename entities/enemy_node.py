@@ -36,6 +36,7 @@ class EnemyNode(AnimatedNode):
         self.facing = pygame.Vector2(1, 0)
         self.velocity = pygame.Vector2(0, 0)
 
+
         # โหลด animations จากไฟล์
         self._load_animations()
 
@@ -62,6 +63,9 @@ class EnemyNode(AnimatedNode):
 
         # ---------- Position ----------
         self.rect.center = pos
+        
+        # ตำแหน่งแบบ float สำหรับคำนวณความเร็ว กรณีเดินสวนสนาม
+        self.pos_x = float(self.rect.x)
 
         # ---------- Combat stats จาก ENEMY_CONFIG ----------
         base_stats: Stats = cfg["stats"]
@@ -145,7 +149,6 @@ class EnemyNode(AnimatedNode):
     # Movement / AI
     # ============================================================
     def _patrol(self, dt: float) -> None:
-        """เดินไป-มาในระยะ move_range จากจุดเริ่มต้น"""
         if self.is_dead:
             self.velocity.update(0, 0)
             return
@@ -153,13 +156,26 @@ class EnemyNode(AnimatedNode):
         self.velocity.x = self.patrol_dir * self.speed
         self.velocity.y = 0
 
-        self.rect.x += int(self.velocity.x * dt)
+        # ใช้ float ไม่ปัดเศษ
+        self.pos_x += self.velocity.x * dt
 
-        if abs(self.rect.x - self._origin_x) > self.move_range:
-            self.patrol_dir *= -1
-            # ปรับทิศหัน
-            self.facing.x = 1 if self.patrol_dir > 0 else -1
-            self.facing.y = 0
+        right_limit = self._origin_x + self.move_range
+        left_limit  = self._origin_x - self.move_range
+
+        # เช็กตาม “ทิศที่เดินอยู่” + clamp ตำแหน่ง
+        if self.patrol_dir > 0 and self.pos_x >= right_limit:
+            self.pos_x = right_limit
+            self.patrol_dir = -1
+        elif self.patrol_dir < 0 and self.pos_x <= left_limit:
+            self.pos_x = left_limit
+            self.patrol_dir = 1
+
+        # sync กลับเข้า rect (ปัดตรงนี้ทีเดียว)
+        self.rect.x = int(self.pos_x)
+
+        self.facing.x = 1 if self.patrol_dir > 0 else -1
+        self.facing.y = 0
+
 
     def _update_ai(self, dt: float) -> None:
         """
