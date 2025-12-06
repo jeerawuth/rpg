@@ -1,6 +1,6 @@
 {
-  "id": "level01",
-  "next_level": "level02", 
+  "id": "level08",
+  "next_level": "", 
   "tileset": "overworld_grass_tiles.png",
   "tile_size": 32,
   "width": 80,
