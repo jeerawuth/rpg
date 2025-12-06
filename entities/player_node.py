@@ -276,7 +276,7 @@ class PlayerNode(AnimatedNode):
 
     def activate_sword_all_direction(self, duration: float = 10.0) -> None:
         """
-        เปิดใช้ดาบตี 4 ทิศแบบมีเวลาจำกัด
+        เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด
 
         - เก็บ main_hand เดิมไว้
         - ใส่ sword_all_direction เป็นอาวุธหลัก
