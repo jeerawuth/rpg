@@ -6,6 +6,8 @@ import pygame
 from .base_scene import BaseScene
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
+from entities.born_effect_node import BornEffectNode
+
 from combat.collision_system import handle_group_vs_group
 from world.level_data import load_level
 from world.tilemap import TileMap
@@ -78,6 +80,11 @@ class GameScene(BaseScene):
             self.enemies,
             self.all_sprites,
         )
+        # โหลด asset ของศัตรูทุกชนิดในด่านนี้ล่วงหน้า
+        self._preload_enemy_assets()
+
+        # โหลด asset ของ effect ต่าง ๆ (เช่น born_effect) ล่วงหน้า
+        self._preload_effect_assets()
 
         # ---------- ITEMS (ตาม level ที่โหลดเข้ามา) ----------
         for spawn in self.level_data.item_spawns:
@@ -153,6 +160,74 @@ class GameScene(BaseScene):
             g = int(255 * t)  # 0 -> 255
         b = 0
         return (r, g, b)
+
+    # ---------- Helper: preload enemy assets ----------
+    def _preload_enemy_assets(self) -> None:
+        """
+        โหลด sprite / animation / sound ของศัตรูทุกชนิดที่ใช้ในด่านนี้ล่วงหน้า
+        เพื่อลดอาการกระตุกตอนศัตรู spawn ครั้งแรกกลางเกม
+        """
+        # ถ้า level_data ไม่มี enemy_spawns ก็ไม่ต้องทำอะไร
+        enemy_spawns = getattr(self.level_data, "enemy_spawns", None)
+        if not enemy_spawns:
+            return
+
+        # รวบรวมชนิดศัตรู (enemy_id) ที่จะใช้ในด่านนี้จาก field "type"
+        enemy_ids: set[str] = set()
+        for spawn in enemy_spawns:
+            enemy_type = spawn.get("type")
+            if enemy_type:
+                enemy_ids.add(enemy_type)
+
+        if not enemy_ids:
+            return
+
+        # ใช้ group ชั่วคราว เพื่อไม่ให้ dummy enemy ไปโผล่ใน all_sprites จริง
+        temp_group = pygame.sprite.Group()
+
+        # สร้าง enemy แต่ละชนิดนอกจอหนึ่งครั้ง เพื่อให้มันโหลด asset เข้าคลัง
+        for enemy_id in enemy_ids:
+            try:
+                dummy = EnemyNode(
+                    self.game,
+                    (-9999, -9999),   # spawn นอกจอ
+                    temp_group,       # ใส่แค่ใน temp_group
+                    enemy_id=enemy_id,
+                )
+                # ไม่ต้องอยู่ต่อในเกม แค่ให้ __init__ ทำงานพอ
+                dummy.kill()
+            except Exception as e:
+                # กันพลาด ถ้า enemy_id ไหน config มีปัญหา จะไม่ทำให้เกมพังทั้งด่าน
+                print(f"[WARN] preload enemy assets failed for '{enemy_id}': {e}")
+
+    # ---------- Helper: preload effect assets ----------
+    def _preload_effect_assets(self) -> None:
+        """
+        โหลด asset ของ BornEffectNode ล่วงหน้า
+        เพื่อลดการหน่วงตอนเล่นเอฟเฟกต์เกิดศัตรูกลางเกม
+        """
+        # ถ้าในด่านนี้ไม่มี spawn เป็นเวลา อาจจะไม่จำเป็น
+        # แต่โหลดไว้ครั้งเดียวก็ไม่เสียหายอะไร
+        temp_group = pygame.sprite.Group()
+
+        # ถ้าในโปรเจกต์คุณใช้ effect_id อื่น ให้เพิ่มในลิสต์นี้ได้เลย
+        effect_ids = ["born"]
+
+        for effect_id in effect_ids:
+            try:
+                # สร้าง effect นอกจอหนึ่งครั้ง เพื่อให้มันโหลดเฟรมเข้าคลัง
+                dummy = BornEffectNode(
+                    self.game,
+                    pos=(-9999, -9999),
+                    *[temp_group],
+                    effect_id=effect_id,
+                    lifetime=0.01,   # สั้น ๆ ก็พอ เพราะเราจะ kill เอง
+                    scale=0.5,       # ให้ตรงกับที่คุณใช้ตอน spawn จริง
+                )
+                dummy.kill()
+            except Exception as e:
+                print(f"[WARN] preload effect assets failed for '{effect_id}': {e}")
+
 
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:

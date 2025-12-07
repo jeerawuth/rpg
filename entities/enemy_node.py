@@ -10,6 +10,9 @@ from config.enemy_config import ENEMY_CONFIG
 
 
 class EnemyNode(AnimatedNode):
+    # cache animations ต่อ sprite_id เพื่อไม่ต้องโหลด/scale ซ้ำทุกตัว
+    _ANIMATION_CACHE: dict[str, dict[tuple[str, str], list[pygame.Surface]]] = {}
+
     def __init__(
         self,
         game,
@@ -36,9 +39,13 @@ class EnemyNode(AnimatedNode):
         self.facing = pygame.Vector2(1, 0)
         self.velocity = pygame.Vector2(0, 0)
 
-
-        # โหลด animations จากไฟล์
-        self._load_animations()
+        # ---------- โหลด animations (ใช้ cache ถ้ามีแล้ว) ----------
+        cached = EnemyNode._ANIMATION_CACHE.get(self.sprite_id)
+        if cached is not None:
+            self.animations = cached
+        else:
+            self._load_animations()
+            EnemyNode._ANIMATION_CACHE[self.sprite_id] = self.animations
 
         # เลือกเฟรมเริ่มต้น
         if ("idle", "down") in self.animations:
@@ -63,8 +70,8 @@ class EnemyNode(AnimatedNode):
 
         # ---------- Position ----------
         self.rect.center = pos
-        
-        # ตำแหน่งแบบ float สำหรับคำนวณความเร็ว กรณีเดินสวนสนาม
+
+        # ตำแหน่งแบบ float สำหรับคำนวณความเร็ว กรณี patrol
         self.pos_x = float(self.rect.x)
 
         # ---------- Combat stats จาก ENEMY_CONFIG ----------
@@ -81,9 +88,11 @@ class EnemyNode(AnimatedNode):
             crit_multiplier=base_stats.crit_multiplier,
         )
 
+        # manager สำหรับ status effect (เช่น damage_taken multiplier)
         self.status = StatusEffectManager(self)
 
         # ---------- AI / Movement ----------
+        # ใช้ speed จาก config (เหมือนของเดิม)
         self.speed: float = cfg.get("speed", 60)
         self.patrol_dir: int = 1       # 1 = เดินขวา, -1 = เดินซ้าย
         self.move_range: float = cfg.get("move_range", 80)
@@ -92,7 +101,6 @@ class EnemyNode(AnimatedNode):
         # รัศมีที่ถ้า player เข้ามาใกล้ จะเริ่มวิ่งไล่
         self.aggro_radius: float = cfg.get("aggro_radius", 200)
         self._aggro_radius_sq: float = self.aggro_radius * self.aggro_radius
-
 
         # ---------- Timers ----------
         self.hurt_timer: float = 0.0
@@ -112,7 +120,7 @@ class EnemyNode(AnimatedNode):
             return 0.0
         ratio = self.stats.hp / self.stats.max_hp
         return max(0.0, min(1.0, ratio))
-    
+
     # ============================================================
     # Animation loading
     # ============================================================
@@ -133,7 +141,6 @@ class EnemyNode(AnimatedNode):
         index = 1
 
         while True:
-            # ตรงกับโครงที่คุณใช้:
             # assets/graphics/images/enemy/<sprite_id>/<state>/<state>_<direction>_01.png
             rel_path = f"enemy/{self.sprite_id}/{state}/{state}_{direction}_{index:02d}.png"
             try:
@@ -166,12 +173,12 @@ class EnemyNode(AnimatedNode):
         self.pos_x += self.velocity.x * dt
 
         right_limit = self._origin_x + self.move_range
-        left_limit  = self._origin_x - self.move_range
+        left_limit = self._origin_x - self.move_range
 
-        if self.patrol_dir > 0 and self.pos_x >= right_limit:
+        if self.pos_x > right_limit:
             self.pos_x = right_limit
             self.patrol_dir = -1
-        elif self.patrol_dir < 0 and self.pos_x <= left_limit:
+        elif self.pos_x < left_limit:
             self.pos_x = left_limit
             self.patrol_dir = 1
 
@@ -179,8 +186,6 @@ class EnemyNode(AnimatedNode):
 
         self.facing.x = 1 if self.patrol_dir > 0 else -1
         self.facing.y = 0
-
-
 
     def _update_ai(self, dt: float) -> None:
         """
@@ -215,8 +220,7 @@ class EnemyNode(AnimatedNode):
             self.velocity.x = vec.x * self.speed
             self.velocity.y = vec.y * self.speed
 
-            # ขยับตำแหน่ง (ตอนนี้ยังไม่ได้ทำชนกับกำแพง ถ้าจะทำจริง
-            # ค่อยแตกเป็น _move_and_collide แบบ Player)
+            # ขยับตำแหน่ง (ตอนนี้ยังไม่ได้ทำชนกับกำแพง)
             self.rect.x += int(self.velocity.x * dt)
             self.rect.y += int(self.velocity.y * dt)
 
@@ -226,7 +230,6 @@ class EnemyNode(AnimatedNode):
         else:
             # ถ้าไกลเกินรัศมี -> เดิน patrol ไป-มาเหมือนเดิม
             self._patrol(dt)
-
 
     # ============================================================
     # Animation state
@@ -269,39 +272,22 @@ class EnemyNode(AnimatedNode):
             return compute_damage(attacker_stats, self.stats, damage_packet)
 
         # 🔊 เล่นเสียงโดนตี (ถ้ามีไฟล์)
-        if hasattr(self, "sfx_hit"):
+        if self.sfx_hit is not None:
             self.sfx_hit.play()
 
-        # modifier จาก status
+        # modifier จาก status (เช่น debuff ทำให้โดนแรงขึ้น)
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
 
-        # compute_damage จะหัก HP ใน self.stats ให้เอง
+        # compute_damage จะไปหัก HP ใน self.stats ให้เอง
         result = compute_damage(attacker_stats, self.stats, damage_packet)
 
-        if not result.killed:
+        if result.killed:
+            self.is_dead = True
+            self.death_timer = 0.5
+        else:
             self.hurt_timer = 0.25
             self.state = "hurt"
-
-        print(
-            f"[Enemy:{self.enemy_id}] took {result.final_damage} dmg "
-            f"({'CRIT' if result.is_crit else 'normal'}) "
-            f"HP: {self.stats.hp}/{self.stats.max_hp}"
-        )
-
-        if result.killed:
-            print(f"[Enemy:{self.enemy_id}] died!")
-            self.is_dead = True
-            self.hurt_timer = 0.0
-            self.velocity.update(0, 0)
-
-            dead_frames = self.animations.get(("dead", self.direction))
-            if dead_frames:
-                self.death_timer = 0.15 * len(dead_frames)
-            else:
-                self.death_timer = 0.4
-
-            self.state = "dead"
 
         return result
 
@@ -319,7 +305,6 @@ class EnemyNode(AnimatedNode):
 
         # ถ้ายังไม่ตาย และไม่ได้อยู่ในช่วงหยุดนิ่ง ค่อยอัปเดต AI / เดินไล่ player
         if not self.is_dead and self.hurt_timer <= 0:
-            # เดิมใช้ patrol อย่างเดียว -> เปลี่ยนเป็นใช้ AI
             self._update_ai(dt)
 
         self._update_animation_state()
@@ -331,5 +316,3 @@ class EnemyNode(AnimatedNode):
             self.death_timer -= dt
             if self.death_timer <= 0:
                 self.kill()
-
-

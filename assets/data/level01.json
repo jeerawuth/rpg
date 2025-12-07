@@ -82,18 +82,28 @@
   "enemy_spawns": [
     {
       "type": "goblin",
-      "pos": [656, 375],
+      "pos": [556, 375],
       "spawn_time": 0 
     },
     {
+      "type": "goblin",
+      "pos": [656, 675],
+      "spawn_time": 5 
+    },
+    {
+      "type": "goblin",
+      "pos": [556, 775],
+      "spawn_time": 5 
+    },
+    {
       "type": "orc",
-      "pos": [856, 675],
-      "spawn_time": 10 
+      "pos": [556, 475],
+      "spawn_time": 5 
     },
     {
       "type": "slime_green",
       "pos": [256, 575],
-      "spawn_time": 20 
+      "spawn_time": 10 
     }
   ],
   "item_spawns": [
