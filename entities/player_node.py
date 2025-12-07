@@ -45,6 +45,15 @@ class PlayerNode(AnimatedNode):
         # ถ้าอยากให้ตอนเก็บของเบากว่านิดนึงก็ได้ เช่น:
         # self.sfx_item_pickup.set_volume(0.5)
 
+        # รูปดาบสำหรับแอนิเมชันวิ่งตามเส้นโค้ง
+        try:
+            self.sword_slash_image = self.game.resources.load_image(
+                "effects/sword_slash.png"      # ปรับ path ตามไฟล์จริงของคุณ
+            )
+        except Exception:
+            self.sword_slash_image = None
+
+
 
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
@@ -655,6 +664,18 @@ class PlayerNode(AnimatedNode):
                     self.game.all_sprites,
                 )
 
+                # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
+                if getattr(self, "sword_slash_image", None) is not None:
+                    SwordSlashArcNode(
+                        self.game,                 # game
+                        self.rect.center,          # center_pos
+                        slash_dir,                 # direction
+                        self.sword_slash_image,    # sword_image
+                        offset,                    # radius
+                        0.20,                      # duration
+                        self.game.all_sprites,     # *groups
+                    )
+
             # เช็คว่าศัตรูตัวไหนโดนฟัน (โดนซ้ำหลายทิศก็ให้โดนครั้งเดียว)
             hit_enemies: set[object] = set()
             for enemy in self.game.enemies.sprites():
@@ -696,6 +717,20 @@ class PlayerNode(AnimatedNode):
                 self.direction,          # "up" / "down" / "left" / "right" / ทแยง
                 self.game.all_sprites,
             )
+
+            # =============================
+            # ถ้าต้องการแสดงอาวุธที่เอฟเฟ็กต์ฟันดาบ
+            # =============================
+            # if getattr(self, "sword_slash_image", None) is not None:
+            #     SwordSlashArcNode(
+            #         self.game,                 # game
+            #         self.rect.center,          # center_pos
+            #         self.direction,            # direction
+            #         self.sword_slash_image,    # sword_image
+            #         max(self.rect.width, self.rect.height) + RANGE,    # radius
+            #         0.20,                      # duration
+            #         self.game.all_sprites,     # *groups
+            #     )
 
             # ตรวจศัตรูที่อยู่ในกรอบ
             for enemy in self.game.enemies.sprites():
