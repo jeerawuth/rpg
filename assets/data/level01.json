@@ -83,12 +83,17 @@
     {
       "type": "goblin",
       "pos": [656, 375],
-      "spawn_time": 40 
+      "spawn_time": 0 
     },
-        {
+    {
+      "type": "orc",
+      "pos": [856, 675],
+      "spawn_time": 10 
+    },
+    {
       "type": "slime_green",
       "pos": [256, 575],
-      "spawn_time": 100 
+      "spawn_time": 20 
     }
   ],
   "item_spawns": [

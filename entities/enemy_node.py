@@ -153,16 +153,21 @@ class EnemyNode(AnimatedNode):
             self.velocity.update(0, 0)
             return
 
+        # ป้องกัน dt กระโดด
+        dt = min(dt, 1 / 30)
+
+        # ถ้ามีส่วนอื่นไปแก้ rect.x มา ให้ sync หนึ่งครั้งตอนเริ่ม
+        if not hasattr(self, "pos_x"):
+            self.pos_x = float(self.rect.x)
+
         self.velocity.x = self.patrol_dir * self.speed
         self.velocity.y = 0
 
-        # ใช้ float ไม่ปัดเศษ
         self.pos_x += self.velocity.x * dt
 
         right_limit = self._origin_x + self.move_range
         left_limit  = self._origin_x - self.move_range
 
-        # เช็กตาม “ทิศที่เดินอยู่” + clamp ตำแหน่ง
         if self.patrol_dir > 0 and self.pos_x >= right_limit:
             self.pos_x = right_limit
             self.patrol_dir = -1
@@ -170,11 +175,11 @@ class EnemyNode(AnimatedNode):
             self.pos_x = left_limit
             self.patrol_dir = 1
 
-        # sync กลับเข้า rect (ปัดตรงนี้ทีเดียว)
-        self.rect.x = int(self.pos_x)
+        self.rect.x = round(self.pos_x)
 
         self.facing.x = 1 if self.patrol_dir > 0 else -1
         self.facing.y = 0
+
 
 
     def _update_ai(self, dt: float) -> None:
