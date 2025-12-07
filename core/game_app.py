@@ -29,7 +29,7 @@ class GameApp:
         # กำหนด scale สำหรับ sprite กับ tile
         self.resources = ResourceManager(
             base_path="assets",
-            sprite_scale=0.12,   # ขนาดตัวละคร / enemy
+            sprite_scale=0.2,   # ขนาดตัวละคร / enemy
             tile_scale=1.0,      # ขนาด tile
             projectile_scale=0.1,  # ลูกธนู
             item_scale=0.1,        # ค่าเริ่มต้นของ items ทุกชนิด
