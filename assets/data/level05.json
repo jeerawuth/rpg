@@ -1,6 +1,6 @@
 {
   "id": "level05",
-  "next_level": "level06",
+  "next_level": "",
   "tileset": "overworld_block_tiles.png",
   "tile_size": 32,
   "width": 80,

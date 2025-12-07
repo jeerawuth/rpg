@@ -145,8 +145,8 @@ def load_level(name: str) -> LevelData:
     # ---------- decor_spawns ----------
     # รูปแบบที่ใช้ใน level0x.json:
     #   "decor_spawns": [
-    #     { "image": "images/decors/tree_01.png", "pos": [400, 455], "anchor": "midbottom" },
-    #     { "image": "images/decors/rock_01.png",  "pos": [350, 420], "anchor": "topleft"   }
+    #     { "image": "images/decors/tree_01.png", "pos": [400, 455], "anchor": "midbottom", "scale": 1.0 },
+    #     { "image": "images/decors/rock_01.png",  "pos": [350, 420], "anchor": "topleft", "scale": 2.0 }
     #   ]
     raw_decor_spawns = raw.get("decor_spawns", [])
 

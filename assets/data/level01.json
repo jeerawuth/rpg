@@ -83,12 +83,12 @@
     {
       "type": "goblin",
       "pos": [656, 375],
-      "spawn_time": 0 
+      "spawn_time": 40 
     },
         {
-      "type": "orc",
+      "type": "slime_green",
       "pos": [256, 575],
-      "spawn_time": 0 
+      "spawn_time": 100 
     }
   ],
   "item_spawns": [
@@ -96,7 +96,11 @@
       "item_id": "bow_power_1",
       "pos": [276, 176], 
       "amount": 1,
-      "spawn_time": 5 
+      "spawn_time": 105 
     }
+  ],
+  "decor_spawns": [
+    { "image": "images/decors/big_tree_01.png", "pos": [600, 630], "anchor": "midbottom", "scale": 2.0 },
+    { "image": "images/decors/rock_02.png",  "pos": [190, 300], "anchor": "midbottom", "scale": 2.0   }
   ]
 }

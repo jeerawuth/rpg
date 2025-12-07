@@ -1,12 +1,12 @@
 from PIL import Image
 
-IMG = "./input/overworld_level_02_old.png"  # แก้เป็นไฟล์ของคุณ
+IMG = "./input/overworld_level_10_old.png"  # แก้เป็นไฟล์ของคุณ
 img = Image.open(IMG).convert("RGBA")
 
 w, h = img.size
 print("old size:", w, h)
 
-NEW_W, NEW_H = 2496, 1152
+NEW_W, NEW_H = 3872, 2176
 
 # สร้างภาพใหม่โปร่งใส (หรือจะใช้สีพื้นก็ได้)
 new_img = Image.new("RGBA", (NEW_W, NEW_H), (0, 0, 0, 0))
@@ -14,5 +14,5 @@ new_img = Image.new("RGBA", (NEW_W, NEW_H), (0, 0, 0, 0))
 # วางภาพเดิมที่มุมซ้ายบน (0,0)
 new_img.paste(img, (0, 0))
 
-new_img.save("./output/overworld_level_02.png")
+new_img.save("./output/overworld_level_10.png")
 print("new size:", new_img.size)
