@@ -91,6 +91,11 @@
       "spawn_time": 5 
     },
     {
+      "type": "orc",
+      "pos": [456, 535],
+      "spawn_time": 5 
+    },
+    {
       "type": "goblin",
       "pos": [556, 775],
       "spawn_time": 5 
@@ -108,7 +113,7 @@
   ],
   "item_spawns": [
     {
-      "item_id": "bow_power_1",
+      "item_id": "sword_all_direction",
       "pos": [276, 176], 
       "amount": 1,
       "spawn_time": 105 
