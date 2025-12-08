@@ -1,7 +1,7 @@
 from PIL import Image
 import json
 
-IMG = "./output/overworld_level_10_resized.png"
+IMG = "./input/overworld_level_03.png"
 TILE = 32
 
 img = Image.open(IMG).convert("RGBA")

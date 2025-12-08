@@ -76,11 +76,16 @@ class TileMap:
             pygame.SRCALPHA,
         )
 
-        # rect สำหรับชน
+        # rect สำหรับชน (แบบเดิม)
         self.collision_rects: List[pygame.Rect] = []
+
+        # เส้น boundary สำหรับชนแบบ circle vs segment
+        # list[tuple[pygame.Vector2, pygame.Vector2]]
+        self.collision_segments: list[tuple[pygame.Vector2, pygame.Vector2]] = []
 
         # เก็บ reference ไปที่เลเยอร์ทั้งหมด
         self.layers = self.level_data.layers
+
 
         # สร้างลิสต์ลำดับการวาดจาก DEFAULT_DRAW_ORDER + เลเยอร์อื่น ๆ
         self.draw_order: List[str] = []
@@ -188,31 +193,91 @@ class TileMap:
 
                 surface.blit(tile_image, (draw_x, draw_y))
 
+    # จัดการกับการชน ทั้ง rect และ segment
     def _build_collision(self) -> None:
-        """
-        สร้าง collision_rects จาก layer "collision"
-
-        convention:
-        - value == 0  -> ไม่มี collision
-        - value != 0  -> มี collision
-        """
         self.collision_rects.clear()
+        self.collision_segments.clear()
 
         grid = self.layers.get("collision")
         if not grid:
             return
 
+        height_c = len(grid)
+        width_c = len(grid[0]) if height_c > 0 else 0
+
+        # ----- คำนวณขนาด cell ของ collision จากขนาดแมพจริง -----
+        # self.width, self.height คือจำนวน tile ของ art (64x36)
+        # self.tile_size คือขนาด tile ของ art (16)
+        map_pixel_w = self.width * self.tile_size
+        map_pixel_h = self.height * self.tile_size
+
+        cell_w = map_pixel_w / width_c    # ถ้า collision 128 ช่อง → 1024/128 = 8
+        cell_h = map_pixel_h / height_c   # 576/72 = 8 (ควรเท่ากัน)
+
+        # ถ้าคุณแน่ใจว่า cell เป็นสี่เหลี่ยมจัตุรัสก็ใช้ตัวเดียวได้
+        cell_size = cell_w  # หรือ min(cell_w, cell_h)
+
+        # ---------- 1) (optional) สร้าง rect สำหรับระบบอื่น ----------
         for y, row in enumerate(grid):
             for x, value in enumerate(row):
                 if value == 0:
                     continue
                 rect = pygame.Rect(
-                    x * self.tile_size,
-                    y * self.tile_size,
-                    self.tile_size,
-                    self.tile_size,
+                    int(x * cell_size),
+                    int(y * cell_size),
+                    int(cell_size),
+                    int(cell_size),
                 )
                 self.collision_rects.append(rect)
+
+        # ---------- 2) marching-squares เพื่อสร้าง segments ----------
+        def corner_value(cx: int, cy: int) -> int:
+            if 0 <= cy < height_c and 0 <= cx < width_c:
+                return 1 if grid[cy][cx] != 0 else 0
+            return 0
+
+        segments: list[tuple[pygame.Vector2, pygame.Vector2]] = []
+
+        for y in range(height_c):
+            for x in range(width_c):
+                v0 = corner_value(x,     y)
+                v1 = corner_value(x + 1, y)
+                v2 = corner_value(x + 1, y + 1)
+                v3 = corner_value(x,     y + 1)
+
+                pts: list[tuple[int, pygame.Vector2]] = []
+
+                bx = x * cell_size
+                by = y * cell_size
+
+                # ขอบบน (0)
+                if v0 != v1:
+                    pts.append((0, pygame.Vector2(bx + cell_size / 2, by)))
+                # ขอบขวา (1)
+                if v1 != v2:
+                    pts.append((1, pygame.Vector2(bx + cell_size, by + cell_size / 2)))
+                # ขอบล่าง (2)
+                if v2 != v3:
+                    pts.append((2, pygame.Vector2(bx + cell_size / 2, by + cell_size)))
+                # ขอบซ้าย (3)
+                if v3 != v0:
+                    pts.append((3, pygame.Vector2(bx, by + cell_size / 2)))
+
+                if not pts:
+                    continue
+
+                pts.sort(key=lambda item: item[0])
+                pts_only = [p for _, p in pts]
+
+                if len(pts_only) == 2:
+                    segments.append((pts_only[0], pts_only[1]))
+                elif len(pts_only) == 4:
+                    segments.append((pts_only[0], pts_only[1]))
+                    segments.append((pts_only[2], pts_only[3]))
+
+        self.collision_segments = segments
+
+
 
     def _build(self) -> None:
         """

@@ -275,8 +275,13 @@ class GameScene(BaseScene):
             return
 
 
-        # ให้ player ใช้ collisionRect จาก tilemap
+
+        # ให้ player ใช้ข้อมูลชนจาก tilemap
+        self.player.set_collision_segments(self.tilemap.collision_segments)
+        
+        # เก็บ rect ไว้ใช้กับอย่างอื่นด้วย
         self.player.set_collision_rects(self.tilemap.collision_rects)
+
 
         # อัปเดต sprite ทั้งหมด
         self.all_sprites.update(dt)

@@ -1,8 +1,8 @@
 from PIL import Image
 
 # ---- ตั้งค่าตรงนี้ ----
-INPUT_FILE = "./output/overworld_level_10.png"     # ชื่อไฟล์ต้นฉบับ
-OUTPUT_FILE = "./output/overworld_level_10_resized.png"  # ชื่อไฟล์หลังย่อ
+INPUT_FILE = "./output/overworld_level_21.png"     # ชื่อไฟล์ต้นฉบับ
+OUTPUT_FILE = "./output/overworld_level_21_resized.png"  # ชื่อไฟล์หลังย่อ
 SCALE_PERCENT = 50           # เปอร์เซ็นต์ที่ต้องการ เช่น 50 = ลดเหลือ 50%
 # -----------------------
 

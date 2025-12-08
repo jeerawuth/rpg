@@ -83,6 +83,16 @@
       "type": "goblin",
       "pos": [1856, 450],
       "spawn_time": 10 
+    },
+    {
+      "type": "boss_orc",
+      "pos": [1556, 350],
+      "spawn_time": 15 
+    },
+    {
+      "type": "boss_orc",
+      "pos": [1356, 250],
+      "spawn_time": 15 
     }
   ],
   "item_spawns": [

@@ -1,7 +1,9 @@
 # entities/player_node.py
 from __future__ import annotations
 
+import math
 import pygame
+
 
 from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, DamageResult, compute_damage
@@ -20,6 +22,47 @@ try:
 except ImportError:
     Inventory = None
     Equipment = None
+
+# helper สำหรับการชน circle + segment
+def circle_segment_mtv(center: pygame.Vector2,
+                       radius: float,
+                       a: pygame.Vector2,
+                       b: pygame.Vector2) -> pygame.Vector2 | None:
+    """
+    หา minimal translation vector (MTV) ที่ต้องขยับวงกลม
+    ออกจาก segment a-b ถ้าไม่ชนให้คืน None
+    """
+    ab = b - a
+    ab_len_sq = ab.x * ab.x + ab.y * ab.y
+    if ab_len_sq == 0:
+        # segment เส้นสั้นมาก → ใช้จุด a แทน
+        to_center = center - a
+        dist_sq = to_center.length_squared()
+        if dist_sq >= radius * radius or dist_sq == 0:
+            return None
+        dist = math.sqrt(dist_sq)
+        overlap = radius - dist
+        return to_center.normalize() * overlap
+
+    # project center ลงเส้น a-b แล้ว clamp ให้อยู่ใน [0, 1]
+    t = (center - a).dot(ab) / ab_len_sq
+    if t < 0.0:
+        t = 0.0
+    elif t > 1.0:
+        t = 1.0
+    closest = a + ab * t
+
+    diff = center - closest
+    dist_sq = diff.length_squared()
+    if dist_sq >= radius * radius or dist_sq == 0:
+        return None
+
+    dist = math.sqrt(dist_sq)
+    overlap = radius - dist
+    normal = diff / dist
+
+    return normal * overlap
+
 
 
 class PlayerNode(AnimatedNode):
@@ -99,6 +142,11 @@ class PlayerNode(AnimatedNode):
 
         # ตั้งตำแหน่งเริ่มต้น
         self.rect.center = pos
+
+        # ใช้ center (Vector2) + radius สำหรับระบบชนแบบวงกลม
+        self.pos = pygame.math.Vector2(self.rect.center)
+        self.radius: float = 10.0  # ลอง 8–12 แล้วดูว่าเข้ากำแพงสวยที่สุดค่าไหน
+
 
         # ---------- Combat stats (RPG style) ----------
         self.stats = Stats(
@@ -338,6 +386,17 @@ class PlayerNode(AnimatedNode):
     # ============================================================
     def set_collision_rects(self, rects: list[pygame.Rect]) -> None:
         self.collision_rects = rects
+    
+    # circle vs segment
+    def set_collision_segments(
+        self,
+        segments: list[tuple[pygame.Vector2, pygame.Vector2]],
+    ) -> None:
+        """
+        ให้ GameScene ส่งเส้น boundary จาก TileMap มาให้
+        """
+        self.collision_segments = segments
+
 
     # ============================================================
     # Input / movement / animation
@@ -362,10 +421,10 @@ class PlayerNode(AnimatedNode):
         else:
             self.velocity.update(0, 0)
 
-        # ใช้ระบบชนกำแพง แทนการเลื่อนตรง ๆ
-        dx = self.velocity.x * dt
-        dy = self.velocity.y * dt
-        self._move_and_collide(dx, dy)
+
+        # ใช้ระบบชนกำแพงแบบวงกลม + segment
+        self._move_and_collide_circle(dt)
+
 
 
     def _move_and_collide(self, dx: float, dy: float) -> None:
@@ -395,6 +454,54 @@ class PlayerNode(AnimatedNode):
                         self.rect.bottom = wall.top
                     else:        # เดินขึ้น
                         self.rect.top = wall.bottom
+
+    
+    def _move_and_collide_circle(self, dt: float) -> None:
+        """
+        ใช้ self.pos (center) + self.radius ชนกับ collision_segments
+        ถ้าไม่มี segment จะ fallback ไปใช้ rect-based เดิม
+        """
+        segments = getattr(self, "collision_segments", []) or []
+
+        # ถ้าไม่มีข้อมูล segment เลย → ใช้ระบบ rect เดิม
+        if not segments:
+            dx = self.velocity.x * dt
+            dy = self.velocity.y * dt
+            self._move_and_collide(dx, dy)
+            # sync pos จาก rect
+            self.pos.update(self.rect.centerx, self.rect.centery)
+            return
+
+        # ตำแหน่งที่อยากไป (ก่อนชน)
+        desired = self.pos + self.velocity * dt
+        new_pos = pygame.Vector2(desired)
+        r = self.radius
+
+        # loop 2–3 รอบเผื่อชนหลายเส้นซ้อนกัน
+        for _ in range(3):
+            moved = False
+            for a, b in segments:
+                # broad-phase: AABB รอบ segment เพื่อลดจำนวนที่ต้องเช็คจริง
+                min_x = min(a.x, b.x) - r
+                max_x = max(a.x, b.x) + r
+                min_y = min(a.y, b.y) - r
+                max_y = max(a.y, b.y) + r
+
+                if not (min_x <= new_pos.x <= max_x and
+                        min_y <= new_pos.y <= max_y):
+                    continue
+
+                mtv = circle_segment_mtv(new_pos, r, a, b)
+                if mtv is not None:
+                    new_pos += mtv
+                    moved = True
+
+            if not moved:
+                break
+
+        self.pos = new_pos
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
+
 
 
     def _update_animation_state(self) -> None:
