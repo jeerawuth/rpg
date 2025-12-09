@@ -212,7 +212,16 @@ class PlayerNode(AnimatedNode):
         self.sword_all_dir_timer: float = 0.0
         self.sword_all_dir_prev_main_hand: str | None = None
 
-
+    # ============================================================
+    # Hp ratio calculation
+    # ============================================================
+    @property
+    def hp_ratio(self) -> float:
+        """คืนค่า 0.0–1.0 แทนสัดส่วน HP ปัจจุบัน"""
+        if self.stats.max_hp <= 0:
+            return 0.0
+        ratio = self.stats.hp / self.stats.max_hp
+        return max(0.0, min(1.0, ratio))
 
     # ============================================================
     # Animation loading

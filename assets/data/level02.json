@@ -512,6 +512,11 @@
     {
       "item_id": "sword_all_direction",
       "pos": [2400, 382],
+      "amount": 2
+    },
+    {
+      "item_id": "sword_all_direction",
+      "pos": [1400, 482],
       "amount": 1
     }
   ],

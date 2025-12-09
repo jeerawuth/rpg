@@ -236,7 +236,7 @@
 
   "enemy_spawns": [
     { "type": "slime_green", "pos": [256, 375], "spawn_time": 0 },
-    { "type": "orc", "pos": [376, 592], "spawn_time": 5 },
+    { "type": "orc", "pos": [376, 392], "spawn_time": 5 },
     { "type": "goblin", "pos": [400, 455], "spawn_time": 10 }
   ],
 

@@ -2,12 +2,53 @@
 from __future__ import annotations
 
 import pygame
+import math
 
 from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, compute_damage, DamageResult
 from combat.status_effect_system import StatusEffectManager
 from config.enemy_config import ENEMY_CONFIG
 
+
+# helper สำหรับการชน circle + segment
+def circle_segment_mtv(center: pygame.Vector2,
+                       radius: float,
+                       a: pygame.Vector2,
+                       b: pygame.Vector2) -> pygame.Vector2 | None:
+    """
+    หา minimal translation vector (MTV) ที่ต้องขยับวงกลม
+    ออกจาก segment a-b ถ้าไม่ชนให้คืน None
+    """
+    ab = b - a
+    ab_len_sq = ab.x * ab.x + ab.y * ab.y
+    if ab_len_sq == 0:
+        # segment เส้นสั้นมาก → ใช้จุด a แทน
+        to_center = center - a
+        dist_sq = to_center.length_squared()
+        if dist_sq >= radius * radius or dist_sq == 0:
+            return None
+        dist = math.sqrt(dist_sq)
+        overlap = radius - dist
+        return to_center.normalize() * overlap
+
+    # project center ลงเส้น a-b แล้ว clamp ให้อยู่ใน [0, 1]
+    t = (center - a).dot(ab) / ab_len_sq
+    if t < 0.0:
+        t = 0.0
+    elif t > 1.0:
+        t = 1.0
+    closest = a + ab * t
+
+    diff = center - closest
+    dist_sq = diff.length_squared()
+    if dist_sq >= radius * radius or dist_sq == 0:
+        return None
+
+    dist = math.sqrt(dist_sq)
+    overlap = radius - dist
+    normal = diff / dist
+
+    return normal * overlap
 
 class EnemyNode(AnimatedNode):
     # cache animations ต่อ sprite_id เพื่อไม่ต้องโหลด/scale ซ้ำทุกตัว
@@ -70,6 +111,17 @@ class EnemyNode(AnimatedNode):
 
         # ---------- Position ----------
         self.rect.center = pos
+
+        # <--- เพิ่มส่วนนี้: คุณสมบัติการชนแบบวงกลม (เหมือนใน player_node.py) --->
+        # ใช้ center (Vector2) + radius สำหรับระบบชนแบบวงกลม
+        self.pos = pygame.math.Vector2(self.rect.center)
+        self.radius: float = 8.0  # กำหนดขนาดรัศมี (อาจลองปรับ 8.0 - 10.0 ตามขนาดศัตรู)
+
+        # เส้น boundary สำหรับชน (รับค่าจาก GameScene)
+        # list[tuple[pygame.Vector2, pygame.Vector2]]
+        self.collision_segments: list[tuple[pygame.Vector2, pygame.Vector2]] = []
+        # <--- สิ้นสุดส่วนที่เพิ่ม --->
+
 
         # ตำแหน่งแบบ float สำหรับคำนวณความเร็ว กรณี patrol
         self.pos_x = float(self.rect.x)
@@ -263,6 +315,46 @@ class EnemyNode(AnimatedNode):
         if frames is not self.frames:
             self.set_frames(frames, reset=False)
 
+
+    # ============================================================
+    # Collision helper
+    # ============================================================
+    def set_collision_segments(
+        self,
+        segments: list[tuple[pygame.Vector2, pygame.Vector2]],
+    ) -> None:
+        """ ให้ GameScene ส่งเส้น boundary จาก TileMap มาให้ """
+        self.collision_segments = segments
+
+    def _move_and_collide_circle(self, dt: float) -> None:
+        """
+        เคลื่อนที่และจัดการชนกำแพง/ขอบเขตด้วยวิธี Circle vs Segment
+        """
+        # คำนวณตำแหน่งใหม่แบบไม่ชนก่อน
+        new_pos = self.pos + self.velocity * dt
+
+        # ลูปชนซ้ำ 4 ครั้ง (เผื่อหลุดกำแพง)
+        for _ in range(4):
+            moved = False
+            
+            # ลูปเช็คชนกับ segment ทั้งหมด
+            for a, b in self.collision_segments:
+                # คำนวณ MTV (Minimal Translation Vector)
+                mtv = circle_segment_mtv(new_pos, self.radius, a, b)
+                
+                if mtv is not None:
+                    # ขยับตัวละครออกจากกำแพง
+                    new_pos += mtv
+                    moved = True
+            
+            # ถ้าไม่มีการชนแล้ว → จบการลูป
+            if not moved:
+                break
+
+        # อัปเดตตำแหน่งจริง
+        self.pos = new_pos
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
+
     # ============================================================
     # Combat
     # ============================================================
@@ -306,6 +398,19 @@ class EnemyNode(AnimatedNode):
         # ถ้ายังไม่ตาย และไม่ได้อยู่ในช่วงหยุดนิ่ง ค่อยอัปเดต AI / เดินไล่ player
         if not self.is_dead and self.hurt_timer <= 0:
             self._update_ai(dt)
+            
+            # <--- แทนที่การเคลื่อนที่ด้วยเมธอดชนกำแพง --->
+            if self.velocity.length_squared() > 0:
+                self._move_and_collide_circle(dt)
+            else:
+                # ถ้าไม่มีความเร็ว ก็แค่อัปเดต rect ให้ตรงกับ pos
+                self.rect.center = (round(self.pos.x), round(self.pos.y))
+            # <--- สิ้นสุดการแก้ไข --->
+            
+        # ถ้าอยู่ในช่วง hurt หรือ dead ก็ให้ rect ตรงกับ pos ปัจจุบัน
+        else:
+             self.rect.center = (round(self.pos.x), round(self.pos.y))
+
 
         self._update_animation_state()
         self._apply_animation()

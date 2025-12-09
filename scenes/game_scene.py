@@ -291,6 +291,14 @@ class GameScene(BaseScene):
 
         # ให้ player ใช้ข้อมูลชนจาก tilemap
         self.player.set_collision_segments(self.tilemap.collision_segments)
+
+        # <--- เพิ่มส่วนนี้: Tilemap Collision (Enemies) --->
+        # ส่ง segment การชนให้ EnemyNode ทุกตัว
+        if hasattr(self.tilemap, "collision_segments"):
+            for enemy in self.enemies.sprites():
+                # ตรวจสอบว่ามี method set_collision_segments ใน enemy หรือไม่
+                if hasattr(enemy, "set_collision_segments"):
+                    enemy.set_collision_segments(self.tilemap.collision_segments)
         
         # เก็บ rect ไว้ใช้กับอย่างอื่นด้วย
         self.player.set_collision_rects(self.tilemap.collision_rects)
@@ -415,7 +423,7 @@ class GameScene(BaseScene):
             surface.blit(sprite.image, (draw_x, draw_y))
 
             # ---------- วาดแถบ HP ของศัตรู ----------
-            if isinstance(sprite, EnemyNode) and not sprite.is_dead:
+            if isinstance(sprite, EnemyNode) or isinstance(sprite, PlayerNode) and not sprite.is_dead:
                 ratio = sprite.hp_ratio   # ใช้ property hp_ratio ใน EnemyNode
 
                 # ขนาดแท่ง HP (สั้นกว่าตัว 50%)
