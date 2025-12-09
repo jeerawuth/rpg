@@ -255,6 +255,68 @@ class GameScene(BaseScene):
                 elif event.key == pygame.K_SPACE:
                     self.player.shoot()
 
+
+    # ============================================================
+    # Collision Handling สำหรับศัตรูด้วยกันจะไม่อยู่ตำแหน่งเดียวกัน
+    # ============================================================
+
+    def _handle_enemy_separation(self) -> None:
+        """
+        จัดการการชนกันระหว่างศัตรู (Enemy vs Enemy) เพื่อไม่ให้เดินซ้อนกัน
+        โดยใช้หลักการ Circle-to-Circle collision และผลักออกจากกัน
+        """
+        # ใช้ list() เพื่อสร้างสำเนาของ enemies.sprites() 
+        # เพื่อหลีกเลี่ยงการแก้ไข list ระหว่างวนลูป
+        enemies_list = list(self.enemies.sprites())
+        
+        # วนลูปตรวจสอบทุกคู่ (i, j) โดยที่ i != j และไม่ซ้ำคู่เดิม
+        for i in range(len(enemies_list)):
+            for j in range(i + 1, len(enemies_list)):
+                enemy1: EnemyNode = enemies_list[i]
+                enemy2: EnemyNode = enemies_list[j]
+
+                # ไม่ต้องทำ separation ถ้าตัวใดตัวหนึ่งตายแล้ว
+                if enemy1.is_dead or enemy2.is_dead:
+                    continue
+
+                # 1. เช็คระยะห่างระหว่างจุดศูนย์กลาง (pos)
+                distance_vec = enemy1.pos - enemy2.pos
+                distance_sq = distance_vec.length_squared()
+
+                # 2. คำนวณรัศมีที่ควรห่างกัน (enemy1.radius + enemy2.radius)
+                # สมมติว่าศัตรูทุกตัวใช้ radius = 8.0 (ตามที่ตั้งใน enemy_node.py)
+                # ถ้าศัตรูมีขนาดไม่เท่ากัน ให้ใช้รัศมีของแต่ละตัว
+                combined_radius = enemy1.radius + enemy2.radius
+                combined_radius_sq = combined_radius * combined_radius
+
+                # 3. ถ้าชนกัน (ระยะห่างน้อยกว่าผลรวมรัศมี)
+                if distance_sq < combined_radius_sq and distance_sq > 0:
+                    
+                    # คำนวณระยะห่างจริงและระยะซ้อนทับ (overlap)
+                    distance = distance_vec.length()
+                    if distance == 0:
+                         # ป้องกันหารด้วยศูนย์ ถ้าตำแหน่งซ้อนกันสนิท
+                         # ขยับตัวใดตัวหนึ่งเล็กน้อยในทิศสุ่ม
+                         distance_vec = pygame.Vector2(1, 0).rotate(pygame.time.get_ticks() % 360)
+                         distance = distance_vec.length()
+
+                    overlap = combined_radius - distance
+                    
+                    # 4. คำนวณทิศทางผลัก (Normalized Vector)
+                    normal = distance_vec.normalize()
+
+                    # 5. คำนวณ MTV (Minimal Translation Vector)
+                    # แบ่งการผลักให้ศัตรูแต่ละตัวเท่าๆ กัน (half overlap)
+                    mtv = normal * (overlap / 2.0)
+
+                    # 6. ผลักศัตรูออกจากกัน
+                    enemy1.pos += mtv
+                    enemy2.pos -= mtv
+                    
+                    # 7. อัปเดต rect (ทำใน enemy update ก็ได้ แต่ทำซ้ำเพื่อความชัวร์)
+                    enemy1.rect.center = (round(enemy1.pos.x), round(enemy1.pos.y))
+                    enemy2.rect.center = (round(enemy2.pos.x), round(enemy2.pos.y))
+
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
         
@@ -288,11 +350,10 @@ class GameScene(BaseScene):
             return
 
 
-
         # ให้ player ใช้ข้อมูลชนจาก tilemap
         self.player.set_collision_segments(self.tilemap.collision_segments)
 
-        # <--- เพิ่มส่วนนี้: Tilemap Collision (Enemies) --->
+        # <--- Tilemap Collision (Enemies) --->
         # ส่ง segment การชนให้ EnemyNode ทุกตัว
         if hasattr(self.tilemap, "collision_segments"):
             for enemy in self.enemies.sprites():
@@ -303,13 +364,15 @@ class GameScene(BaseScene):
         # เก็บ rect ไว้ใช้กับอย่างอื่นด้วย
         self.player.set_collision_rects(self.tilemap.collision_rects)
 
-
         # อัปเดต sprite ทั้งหมด
         self.all_sprites.update(dt)
 
         # อัปเดตการ spawn ศัตรูตามเวลา / wave
         if hasattr(self, "spawn_manager"):
             self.spawn_manager.update(dt)
+
+        # จัดการการชนระหว่างศัตรู ไม่ให้อยู่ตำแหน่งเดียวกัน
+        self._handle_enemy_separation()
 
         # อัปเดตกล้องให้ตาม player
         self.camera.update(self.player.rect, dt)
