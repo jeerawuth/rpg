@@ -103,20 +103,33 @@ class GameScene(BaseScene):
 
         # ---------- DECORATIONS (ของตกแต่งฉาก) ----------
         for spawn in getattr(self.level_data, "decor_spawns", []):
-            pos = tuple(spawn["pos"])
-            image = spawn["image"]
+            pos    = tuple(spawn["pos"])
+            image  = spawn["image"]
             anchor = spawn.get("anchor", "topleft")
-            scale = spawn.get("scale", 1.0)
+            scale  = spawn.get("scale", 1.0)
+            layer  = spawn.get("layer", "front")   # "front" | "back"
 
-            DecorationNode(
+            deco = DecorationNode(
                 self.game.resources,   # rm
-                pos,                   # pos
-                image,                 # image_path
-                anchor,                # anchor  (ไม่ต้องใช้ anchor=anchor แล้ว)
-                scale,                 # scale   (ไม่ต้องใช้ scale=scale แล้ว)
-                self.all_sprites,      # groups...
+                pos,
+                image,
+                anchor,
+                scale,
+                self.all_sprites,
                 self.decorations,
             )
+
+            # กำหนด z-index ตาม layer
+            # ค่าตัวเลขนี่แล้วแต่จะดีไซน์ ผมให้ back = -10, front = +10
+            if layer == "back":
+                deco.z = -10
+            elif layer == "front":
+                deco.z = 10
+            else:
+                deco.z = 0
+
+            # เก็บ layer แบบตัวหนังสือไว้ใช้เช็คต่อก็ได้
+            deco.draw_layer = layer
 
 
 
@@ -392,11 +405,11 @@ class GameScene(BaseScene):
 
         offset = self.camera.offset
 
-        # วาด tilemap ตาม offset
+        # วาด tilemap ก่อน
         self.tilemap.draw(surface, camera_offset=offset)
 
-        # วาด sprite โดยเลื่อนตาม offset
-        for sprite in self.all_sprites:
+        # วาด sprite ตาม z-index (default = 0 ถ้าไม่มี z)
+        for sprite in sorted(self.all_sprites, key=lambda s: getattr(s, "z", 0)):
             draw_x = sprite.rect.x - int(offset.x)
             draw_y = sprite.rect.y - int(offset.y)
             surface.blit(sprite.image, (draw_x, draw_y))

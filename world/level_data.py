@@ -143,37 +143,43 @@ def load_level(name: str) -> LevelData:
             })
     
     # ---------- decor_spawns ----------
-    # รูปแบบที่ใช้ใน level0x.json:
+    # รูปแบบใหม่ใน level0x.json:
     #   "decor_spawns": [
-    #     { "image": "images/decors/tree_01.png", "pos": [400, 455], "anchor": "midbottom", "scale": 1.0 },
-    #     { "image": "images/decors/rock_01.png",  "pos": [350, 420], "anchor": "topleft", "scale": 2.0 }
+    #     { "image": "images/decors/tree_01.png",
+    #       "pos": [x, y],
+    #       "anchor": "midbottom",
+    #       "scale": 2.0,
+    #       "layer": "back" }   # "front" | "back"
     #   ]
     raw_decor_spawns = raw.get("decor_spawns", [])
 
     decor_spawns: List[Dict[str, Any]] = []
     for entry in raw_decor_spawns:
         if isinstance(entry, dict):
-            image = entry.get("image", "")
-            pos = entry.get("pos", [0, 0])
+            image  = entry.get("image", "")
+            pos    = entry.get("pos", [0, 0])
             anchor = entry.get("anchor", "topleft")
-            scale = entry.get("scale", 1.0)        # ← ดึง scale ถ้ามี
+            scale  = entry.get("scale", 1.0)
+            layer  = entry.get("layer", "front")  # ← เพิ่มตรงนี้
         else:
-            # เผื่ออนาคตจะรองรับ list: [x, y, "images/decors/tree_01.png", "midbottom", 1.5]
+            # เผื่อรูปแบบ list ในอนาคต:
+            # [x, y, "images/decors/tree_01.png", "midbottom", 1.5, "back"]
             if len(entry) >= 3:
                 x, y, image = entry[:3]
-                pos = [x, y]
+                pos    = [x, y]
                 anchor = entry[3] if len(entry) >= 4 else "topleft"
-                scale = entry[4] if len(entry) >= 5 else 1.0
+                scale  = entry[4] if len(entry) >= 5 else 1.0
+                layer  = entry[5] if len(entry) >= 6 else "front"
             else:
                 continue
 
         decor_spawns.append({
-            "image": image,
-            "pos": pos,
+            "image":  image,
+            "pos":    pos,
             "anchor": anchor,
-            "scale": scale,                        # ← เก็บ scale เข้า dict
+            "scale":  scale,
+            "layer":  layer,   # ← เก็บเข้า dict ส่งต่อไป GameScene
         })
-
 
 
     return LevelData(

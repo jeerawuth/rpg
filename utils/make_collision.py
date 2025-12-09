@@ -3,10 +3,10 @@ import numpy as np
 import json
 import math
 
-IMG = "./input/overworld_level_03_bone.png"
+IMG = "./output/overworld_level_03.png"
 
 # ขนาด cell สำหรับ collision (ไม่จำเป็นต้องเท่ากับ tile art)
-COLL_TILE   = 8       # 8x8 px
+COLL_TILE   = 4       # 8x8 px
 ALPHA_THR   = 32      # pixel ที่ alpha >= 32 ถือว่า "ทึบ"
 COVER_THR   = 0.40    # มี pixel ทึบ >= 40% ⇒ cell นี้ชนได้
 
