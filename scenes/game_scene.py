@@ -91,7 +91,7 @@ class GameScene(BaseScene):
             pos = tuple(spawn["pos"])          # [x, y] -> (x, y)
             item_id = spawn["item_id"]
             amount = spawn.get("amount", 1)
-
+            
             ItemNode(
                 self.game,
                 pos,
@@ -100,6 +100,7 @@ class GameScene(BaseScene):
                 self.all_sprites,
                 self.items,
             )
+            
 
         # ---------- DECORATIONS (ของตกแต่งฉาก) ----------
         for spawn in getattr(self.level_data, "decor_spawns", []):
@@ -231,7 +232,7 @@ class GameScene(BaseScene):
                 # สร้าง effect นอกจอหนึ่งครั้ง เพื่อให้มันโหลดเฟรมเข้าคลัง
                 dummy = BornEffectNode(
                     self.game,
-                    pos=(-9999, -9999),
+                    (-9999, -9999),
                     *[temp_group],
                     effect_id=effect_id,
                     lifetime=0.01,   # สั้น ๆ ก็พอ เพราะเราจะ kill เอง
@@ -240,7 +241,7 @@ class GameScene(BaseScene):
                 dummy.kill()
             except Exception as e:
                 print(f"[WARN] preload effect assets failed for '{effect_id}': {e}")
-
+    
 
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:

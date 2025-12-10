@@ -97,7 +97,6 @@ class PlayerNode(AnimatedNode):
             self.sword_slash_image = None
 
 
-
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
         self.state: str = "idle"      # idle / walk / attack / hurt / dead / cast
@@ -321,8 +320,13 @@ class PlayerNode(AnimatedNode):
                 self.stats.crit_chance += 0.05
 
             elif weapon.id == "sword_all_direction":
-                # ธนูเพิ่มดาเมจ + โอกาสติดคริ
+                # ดาบรอบทิศทางเพิ่มดาเมจ + โอกาสติดคริ
                 self.stats.attack += 4
+                self.stats.crit_chance += 0.05
+            
+            elif weapon.id == "sword_all_direction_2":
+                # ดาบรอบทิศทางเพิ่มดาเมจ + โอกาสติดคริ
+                self.stats.attack += 5
                 self.stats.crit_chance += 0.05
 
             # เผื่ออนาคตมี bow_power_2, bow_power_3
@@ -341,8 +345,13 @@ class PlayerNode(AnimatedNode):
     
     # ============================================================
     # Temporary weapon buff: sword_all_direction
+    # ============================================================
+    # entities/player_node.py
 
-    def activate_sword_all_direction(self, duration: float = 10.0) -> None:
+    # ============================================================
+    # Temporary weapon buff: sword_all_direction
+    # ============================================================
+    def activate_sword_all_direction(self, item_id, duration) -> None:
         """
         เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด
 
@@ -352,17 +361,28 @@ class PlayerNode(AnimatedNode):
         """
         if getattr(self, "equipment", None) is None:
             return
+        
+        # เก็บ id ของการฟันรอบทิศทางว่าเป็นแบบไหน
+        self.sword_all_direction_id = item_id
 
         # ถ้ามีบัฟนี้อยู่แล้ว -> แค่รีเฟรชเวลา
         if self.sword_all_dir_timer > 0:
+            
+            # --- [แก้ไข BUG] ตรวจสอบว่ามีการเปลี่ยนชนิดดาบ (sword_all_direction_x) หรือไม่ ---
+            if self.equipment.main_hand != item_id:
+                # ถ้าเปลี่ยนชนิดดาบ ให้เปลี่ยนอุปกรณ์ที่ติดตั้งและรีคำนวณ stats ใหม่
+                self.equipment.main_hand = item_id
+                self._recalc_stats_from_equipment()
+            # -----------------------------------------------------------------------------------
+            
             self.sword_all_dir_timer = duration
             return
 
         # เก็บอาวุธเดิม (เก็บเป็น item_id ใน Equipment)
         self.sword_all_dir_prev_main_hand = self.equipment.main_hand
 
-        # ใส่ดาบรอบทิศทาง
-        self.equipment.main_hand = "sword_all_direction"
+        # ใส่ดาบรอบทิศทางดูจากค่า item_id เช่น sword_all_direction_2
+        self.equipment.main_hand = item_id
 
         # อัปเดต stats ใหม่ตามอุปกรณ์
         self._recalc_stats_from_equipment()
@@ -628,6 +648,7 @@ class PlayerNode(AnimatedNode):
         - sword_basic   -> 15
         - bow_power_1   -> 25
         - sword_all_direction   -> 25
+        - sword_all_direction   -> 30
         """
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
@@ -638,6 +659,8 @@ class PlayerNode(AnimatedNode):
                     return 15
                 if weapon.id == "sword_all_direction":
                     return 25
+                if weapon.id == "sword_all_direction_2":
+                    return 30
         return 10
     
 
@@ -703,6 +726,7 @@ class PlayerNode(AnimatedNode):
         weapon_id: str | None = None
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
+
             if weapon and weapon.item_type == "weapon":
                 weapon_id = weapon.id
 
@@ -721,7 +745,7 @@ class PlayerNode(AnimatedNode):
         # ============================================================
         # กรณีดาบฟันรอบทิศทาง -> ฟันครบ 8 ทิศ
         # ============================================================
-        if weapon_id == "sword_all_direction":
+        if weapon_id == "sword_all_direction" or weapon_id == "sword_all_direction_2":
             from pygame.math import Vector2
 
             # 8 ทิศรอบตัว (ใช้ร่วมกับชื่อ direction สำหรับ SlashEffectNode)
@@ -780,17 +804,19 @@ class PlayerNode(AnimatedNode):
                     self.game.all_sprites,
                 )
 
-                # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
-                if getattr(self, "sword_slash_image", None) is not None:
-                    SwordSlashArcNode(
-                        self.game,                 # game
-                        self.rect.center,          # center_pos
-                        slash_dir,                 # direction
-                        self.sword_slash_image,    # sword_image
-                        offset,                    # radius
-                        0.20,                      # duration
-                        self.game.all_sprites,     # *groups
-                    )
+                # รูปดาบวิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์เฉพาะ 2x
+                if weapon_id == "sword_all_direction_2":
+                    # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
+                    if getattr(self, "sword_slash_image", None) is not None:
+                        SwordSlashArcNode(
+                            self.game,                 # game
+                            self.rect.center,          # center_pos
+                            slash_dir,                 # direction
+                            self.sword_slash_image,    # sword_image
+                            offset,                    # radius
+                            0.20,                      # duration
+                            self.game.all_sprites,     # *groups
+                        )
 
             # เช็คว่าศัตรูตัวไหนโดนฟัน (โดนซ้ำหลายทิศก็ให้โดนครั้งเดียว)
             hit_enemies: set[object] = set()

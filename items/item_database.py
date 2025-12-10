@@ -69,6 +69,17 @@ class ItemDatabase:
             )
         )
 
+        self._register(
+            ItemBase(
+                id="sword_all_direction_2",
+                name="All Direction Sword Double 2x",
+                description="ดาบรอบทิศทางเวลา 2 เท่า",
+                item_type="weapon",
+                max_stack=1,
+                icon_key="items/sword_all_direction.png",
+            )
+        )
+
         # ไอเท็มเพิ่มพลังโจมตีธนู (เวอร์ชันที่คุณใช้คือ bow_power_1)
         # แนะนำให้มีไฟล์:
         #   assets/graphics/images/items/bow_power_01.png

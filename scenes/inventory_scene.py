@@ -54,19 +54,27 @@ class InventoryScene(BaseScene):
 
         item = stack.item
 
-        # ---------- เคสพิเศษ: sword_all_direction = ไอเท็มกดใช้ ----------
-        if item.id == "sword_all_direction":
-            # ลบออกจากช่องปัจจุบัน 1 ชิ้น
+        # ---------- เคสพิเศษ: ดาบรอบทิศทาง = ไอเท็มกดใช้ (ใช้แล้วหายไป) ----------
+        # รองรับทั้ง sword_all_direction (10 วิ) และ sword_all_direction_2 (20 วิ)
+        if item.id in ("sword_all_direction", "sword_all_direction_2"):
+            # 1. กำหนดระยะเวลาตามไอเท็ม
+            duration = 10.0
+            item_name = "All Direction Sword"
+            
+            if item.id == "sword_all_direction_2":
+                duration = 20.0
+                item_name = item.name  # ใช้ชื่อจาก ItemBase ที่คุณสร้างไว้
+
+            # 2. ลบออกจากช่องปัจจุบัน 1 ชิ้น
             stack.quantity -= 1
             if stack.quantity <= 0:
                 inv.set(self.selected_index, None)
 
-            # สั่งให้ player เปิดบัฟ 10 วินาที
+            # 3. สั่งให้ player เปิดบัฟตามระยะเวลาที่กำหนด ส่งชื่อไอเท็มและรหัสไอดีของไอเท็มไป
             if hasattr(self.player, "activate_sword_all_direction"):
-                self.player.activate_sword_all_direction(duration=10.0)
+                self.player.activate_sword_all_direction(item_id=item.id, duration=duration)
 
-            print("ใช้ไอเท็ม All Direction Sword (10 วินาที)")
-            # จะปิดหน้าต่าง inventory เลยก็ได้ ถ้าชอบ
+            print(f"ใช้ไอเท็ม {item_name} ({duration} วินาที)")
             # self.game.scene_manager.pop_scene()
             return
 

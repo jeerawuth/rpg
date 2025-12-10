@@ -90,7 +90,7 @@
       "spawn_time": 15 
     },
     {
-      "type": "boss_orc",
+      "type": "undead",
       "pos": [1356, 250],
       "spawn_time": 15 
     }
