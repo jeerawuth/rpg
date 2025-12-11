@@ -1,9 +1,9 @@
 {
   "id": "level01",
-  "next_level": "level06",
+  "next_level": "level02",
   "tileset": "overworld_level_01.png",
   "tile_size": 32,
-  "width": 48,
+  "width": 44,
   "height": 32,
   "layers": {
     "ground": [
