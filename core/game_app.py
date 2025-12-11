@@ -41,7 +41,7 @@ class GameApp:
                 # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
                 "items/shield": 0.06,
                 # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
-                "items/sword_all_direction": 0.06,
+                "items/sword_all_direction": 0.12,
             },
         )
 

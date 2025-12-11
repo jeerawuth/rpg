@@ -76,7 +76,7 @@ class ItemDatabase:
                 description="ดาบรอบทิศทางเวลา 2 เท่า",
                 item_type="weapon",
                 max_stack=1,
-                icon_key="items/sword_all_direction.png",
+                icon_key="items/sword_all_direction2_01.png",
             )
         )
 
