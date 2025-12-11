@@ -113,7 +113,6 @@ class ResourceManager:
             for prefix, override_scale in self.item_scale_overrides.items():
                 # prefix เช่น "items/bow_power" จะ match:
                 #   "items/bow_power_01.png"
-                #   "items/bow_power/bow_power_01.png" (ถ้าคุณจัดโฟลเดอร์ลึก)
                 if relative_path.startswith(prefix):
                     scale = override_scale
                     break

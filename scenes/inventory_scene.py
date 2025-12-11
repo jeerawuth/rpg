@@ -78,6 +78,30 @@ class InventoryScene(BaseScene):
             # self.game.scene_manager.pop_scene()
             return
 
+
+        # ==================================================================
+        # เคสพิเศษ: ธนู Power (ใช้แล้วหมดไป มีเวลาจำกัด)
+        # รองรับทั้ง bow_power_1 (20 วิ) และ bow_power_2 (10 วิ)
+        # ==================================================================
+        if item.id in ("bow_power_1", "bow_power_2"):
+            # 1. กำหนดระยะเวลา
+            duration = 20.0
+            if item.id == "bow_power_2":
+                duration = 10.0
+            
+            # 2. ลบออกจาก inventory 1 ชิ้น
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(self.selected_index, None)
+
+            # 3. สั่งให้ player เปิดบัฟธนู
+            # (เราจะต้องไปสร้างฟังก์ชัน activate_bow_power ใน PlayerNode)
+            if hasattr(self.player, "activate_bow_power"):
+                self.player.activate_bow_power(item_id=item.id, duration=duration)
+            
+            print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
+            return
+
         # ---------- เคสทั่วไป: equip ตามประเภทของไอเท็ม ----------
         # ตัดสินใจว่าจะใส่ช่องไหนตามประเภทของไอเท็ม
         if item.item_type == "weapon":

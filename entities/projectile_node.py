@@ -23,6 +23,7 @@ class ProjectileNode(AnimatedNode):
         direction: pygame.Vector2,
         speed: float,
         damage_packet: DamagePacket,
+        projectile_id: str = "arrow",
         lifetime: float = 1.5,
         *groups,
     ) -> None:
@@ -33,7 +34,7 @@ class ProjectileNode(AnimatedNode):
         self.speed = speed
         self.lifetime = lifetime
         self.age = 0.0
-
+        self.projectile_id = projectile_id
         self.position = pygame.Vector2(pos)
 
         # กันทิศทาง (0, 0)
@@ -78,7 +79,8 @@ class ProjectileNode(AnimatedNode):
 
         index = 1
         while True:
-            rel_path = f"projectiles/arrow/arrow_{index:02d}.png"
+            # โหลดรูปอาวุธเคลื่อนที่โดยดูจากค่า projectile_id ที่ส่งเข้ามา
+            rel_path = f"projectiles/arrow/{self.projectile_id}_{index:02d}.png"
             try:
                 base_frame = resources.load_image(rel_path)
             except Exception:

@@ -465,7 +465,7 @@
   },
   "player_spawn": [
     376,
-    960
+    860
   ],
   "exit_point": [
     2464,
@@ -507,6 +507,11 @@
     {
       "item_id": "bow_power_1",
       "pos": [1500, 576], 
+      "amount": 1
+    },
+    {
+      "item_id": "bow_power_2",
+      "pos": [1600, 476], 
       "amount": 1
     },
     {

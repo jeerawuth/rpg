@@ -207,9 +207,13 @@ class PlayerNode(AnimatedNode):
         self.debug_attack_timer: float = 0.0
         # ----- DEBUG melee hitbox effect -----
 
-        # ---------- Temporary weapon buff: sword_all_direction ----------
+        # ตัวแปรสำหรับบัฟ sword_all_direction
         self.sword_all_dir_timer: float = 0.0
         self.sword_all_dir_prev_main_hand: str | None = None
+
+        # ตัวแปรสำหรับบัฟ Bow Power
+        self.bow_power_timer: float = 0.0
+        self.bow_power_prev_main_hand: str | None = None
 
     # ============================================================
     # Hp ratio calculation
@@ -347,11 +351,6 @@ class PlayerNode(AnimatedNode):
                 # self.stats.resistances["physical"] = \
                 #     self.stats.resistances.get("physical", 0.0) + 0.1
 
-    
-    # ============================================================
-    # Temporary weapon buff: sword_all_direction
-    # ============================================================
-    # entities/player_node.py
 
     # ============================================================
     # Temporary weapon buff: sword_all_direction
@@ -414,6 +413,60 @@ class PlayerNode(AnimatedNode):
 
             self.sword_all_dir_prev_main_hand = None
 
+    # ============================================================
+    # Temporary weapon buff: Bow Power
+    # ============================================================
+    def activate_bow_power(self, item_id, duration) -> None:
+        """
+        เปิดใช้ธนูแบบมีเวลาจำกัด
+        """
+        if getattr(self, "equipment", None) is None:
+            return
+
+        # ถ้ามีบัฟธนูนี้อยู่แล้ว -> แค่รีเฟรชเวลา
+        if self.bow_power_timer > 0:
+            # ถ้าเปลี่ยนชนิดธนู (เช่นจาก 1 เป็น 2) ให้ equip ใหม่
+            if self.equipment.main_hand != item_id:
+                self.equipment.main_hand = item_id
+                self._recalc_stats_from_equipment()
+            
+            self.bow_power_timer = duration
+            return
+
+        # เก็บอาวุธเดิมไว้ก่อนเปลี่ยน
+        self.bow_power_prev_main_hand = self.equipment.main_hand
+
+        # สวมใส่ธนู power
+        self.equipment.main_hand = item_id
+
+        # อัปเดต stats ใหม่ (เพิ่ม damage/crit)
+        self._recalc_stats_from_equipment()
+
+        # ตั้งเวลา
+        self.bow_power_timer = duration
+
+    def _update_bow_power(self, dt: float) -> None:
+        """นับถอยหลังบัฟ Bow และคืนอาวุธเดิมเมื่อหมดเวลา"""
+        if self.bow_power_timer <= 0:
+            return
+
+        self.bow_power_timer -= dt
+        if self.bow_power_timer <= 0:
+            self.bow_power_timer = 0.0
+
+            # คืนอาวุธเดิมเมื่อหมดเวลา
+            if getattr(self, "equipment", None) is not None:
+                # เช็คกันพลาดเผื่อ prev เป็น None
+                if self.bow_power_prev_main_hand is not None:
+                    self.equipment.main_hand = self.bow_power_prev_main_hand
+                else:
+                    # ถ้าไม่มีของเก่า ให้ถอดออกหรือใส่อาวุธพื้นฐาน (แล้วแต่ดีไซน์)
+                    self.equipment.main_hand = None 
+                
+                self._recalc_stats_from_equipment()
+
+            self.bow_power_prev_main_hand = None
+            print("Bow Power expired. Weapon reverted.")
 
     # ============================================================
     # Collision helper
@@ -660,6 +713,8 @@ class PlayerNode(AnimatedNode):
             if weapon and weapon.item_type == "weapon":
                 if weapon.id == "bow_power_1":
                     return 35
+                if weapon.id == "bow_power_2":
+                    return 100
                 if weapon.id == "sword_basic":
                     return 15
                 if weapon.id == "sword_all_direction":
@@ -899,6 +954,17 @@ class PlayerNode(AnimatedNode):
 
         base_damage = self._get_current_weapon_base_damage()
 
+        # <--- [1] ตรวจสอบอาวุธปัจจุบันเพื่อเลือกชนิดลูกธนู --->
+        projectile_id = "arrow" # ค่าเริ่มต้น (สำหรับ bow_power_1 หรืออื่นๆ)
+        
+        if getattr(self, "equipment", None) is not None:
+            weapon = self.equipment.get_item("main_hand")
+            if weapon:
+                # ถ้าเป็น bow_power_2 ให้ใช้ arrow2
+                if weapon.id == "bow_power_2":
+                    projectile_id = "arrow2"
+                # ถ้าอนาคตมี bow_power_3 ก็เพิ่ม elif ได้ที่นี่
+
         packet = DamagePacket(
             base=base_damage,
             damage_type="physical",
@@ -911,6 +977,7 @@ class PlayerNode(AnimatedNode):
             direction,
             450,
             packet,
+            projectile_id,   # เลือกว่าจะแสดงอาวุธแบบใด
             1.5,
             self.projectile_group,
             self.game.all_sprites,
@@ -981,6 +1048,9 @@ class PlayerNode(AnimatedNode):
 
         # นับเวลาบัฟดาบรอบทิศทาง
         self._update_sword_all_direction(dt)
+
+        # นับเวลาบัฟธนู
+        self._update_bow_power(dt)
 
         # นับเวลาถูกโจมตี (ใช้เล่นแอนิเมชัน hurt)
         if getattr(self, "hurt_timer", 0.0) > 0:
