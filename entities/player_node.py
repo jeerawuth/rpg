@@ -318,6 +318,11 @@ class PlayerNode(AnimatedNode):
                 # ธนูเพิ่มดาเมจ + โอกาสติดคริ
                 self.stats.attack += 4
                 self.stats.crit_chance += 0.05
+            
+            elif weapon.id == "bow_power_2":
+                # ธนูเพิ่มดาเมจ + โอกาสติดคริ
+                self.stats.attack += 20
+                self.stats.crit_chance += 0.08
 
             elif weapon.id == "sword_all_direction":
                 # ดาบรอบทิศทางเพิ่มดาเมจ + โอกาสติดคริ

@@ -35,13 +35,13 @@ class GameApp:
             item_scale=0.1,        # ค่าเริ่มต้นของ items ทุกชนิด
             item_scale_overrides={
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
-                "items/bow_power": 0.1,
+                "items/bow_power": 0.2,
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
-                "items/potion_small": 0.06,
+                "items/potion_small": 0.1,
                 # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
-                "items/shield": 0.06,
+                "items/shield": 0.1,
                 # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
-                "items/sword_all_direction": 0.12,
+                "items/sword_all_direction": 0.2,
             },
         )
 

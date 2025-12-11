@@ -95,6 +95,18 @@ class ItemDatabase:
             )
         )
 
+        #   assets/graphics/images/items/bow_power2_01.png
+        self._register(
+            ItemBase(
+                id="bow_power_2",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="Bow Power Lv.2",
+                description="เพิ่มพลังโจมตีของลูกธนู 2 เท่า",
+                item_type="weapon",
+                max_stack=1,
+                icon_key="items/bow_power2_01.png",  # เฟรมแรกของอนิเมชัน
+            )
+        )
+
         # ---------- Shield / Armor ----------
         # ไอเท็มโล่
         # แนะนำไฟล์:

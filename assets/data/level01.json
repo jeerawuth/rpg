@@ -236,15 +236,20 @@
 
   "enemy_spawns": [
     { "type": "slime_green", "pos": [256, 375], "spawn_time": 0 },
-    { "type": "orc", "pos": [376, 392], "spawn_time": 5 },
-    { "type": "goblin", "pos": [400, 455], "spawn_time": 10 },
+    { "type": "orc", "pos": [376, 392], "spawn_time": 10 },
+    { "type": "goblin", "pos": [400, 455], "spawn_time": 15 },
     { "type": "undead", "pos": [256, 375], "spawn_time": 20 }
   ],
 
   "item_spawns": [
     {
-      "item_id": "sword_all_direction",
+      "item_id": "bow_power_1",
       "pos": [276, 176], 
+      "amount": 1
+    },
+    {
+      "item_id": "bow_power_2",
+      "pos": [476, 356], 
       "amount": 1
     },
     {
