@@ -463,7 +463,11 @@
     { "type": "slime_green", "pos": [656, 975], "spawn_time": 0 },
     { "type": "slime_green", "pos": [856, 875], "spawn_time": 10 },
     { "type": "slime_green", "pos": [656, 675], "spawn_time": 10 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 15 }
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 15 },
+    { "type": "slime_green", "pos": [656, 675], "spawn_time": 20 },
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 20 },
+    { "type": "slime_green", "pos": [656, 675], "spawn_time": 25 },
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 25 }
   ],
 
   "item_spawns": [

@@ -215,8 +215,14 @@ class PlayerNode(AnimatedNode):
         self.sword_all_dir_prev_main_hand: str | None = None
 
         # ----- Magic lightning cooldown -----
-        self.magic_lightning_cooldown = 2.0
+        self.magic_lightning_cooldown = 1.0
         self.magic_lightning_timer = 0.0
+
+        # ----- Magic lightning buff duration (NEW) -----
+        self.magic_lightning_buff_timer: float = 0.0
+        self.magic_lightning_prev_main_hand: str | None = None
+        self.magic_lightning_id: str = "magic_lightning"
+
 
 
         # ตัวแปรสำหรับบัฟ Bow Power
@@ -326,6 +332,12 @@ class PlayerNode(AnimatedNode):
         if weapon:
             if weapon.id == "sword_basic":
                 self.stats.attack += 5
+
+
+            elif weapon.id == "magic_lightning":
+                # ธนูเพิ่มดาเมจ + โอกาสติดคริ
+                self.stats.magic += 10
+                self.stats.crit_chance += 0.09
             elif weapon.id == "bow_power_1":
                 # ธนูเพิ่มดาเมจ + โอกาสติดคริ
                 self.stats.attack += 4
@@ -475,6 +487,51 @@ class PlayerNode(AnimatedNode):
 
             self.bow_power_prev_main_hand = None
             print("Bow Power expired. Weapon reverted.")
+
+    # ============================================================
+    # Temporary weapon buff: Magic Lightning
+    # ============================================================
+    def activate_magic_lightning(self, item_id: str, duration: float) -> None:
+        if getattr(self, "equipment", None) is None:
+            return
+
+        # ถ้ากำลังถืออยู่แล้ว -> รีเฟรชเวลา + (ถ้าชนิดต่างกันค่อยสวมใหม่)
+        if self.magic_lightning_buff_timer > 0:
+            if self.equipment.main_hand != item_id:
+                self.equipment.main_hand = item_id
+                self._recalc_stats_from_equipment()
+            self.magic_lightning_buff_timer = duration
+            return
+
+        # เก็บอาวุธเดิม
+        self.magic_lightning_prev_main_hand = self.equipment.main_hand
+
+        # สวม magic_lightning เป็นอาวุธหลัก
+        self.equipment.main_hand = item_id
+        self._recalc_stats_from_equipment()  # ถ้าคุณมีเพิ่ม magic/crit ไว้ก็จะทำงาน :contentReference[oaicite:4]{index=4}
+
+        # ตั้งเวลาถือ
+        self.magic_lightning_buff_timer = duration
+
+
+    def _update_magic_lightning_buff(self, dt: float) -> None:
+        if self.magic_lightning_buff_timer <= 0:
+            return
+
+        self.magic_lightning_buff_timer -= dt
+        if self.magic_lightning_buff_timer <= 0:
+            self.magic_lightning_buff_timer = 0.0
+
+            # คืนอาวุธเดิม (กันพลาด: คืนเฉพาะถ้ายังถือ magic_lightning อยู่จริง)
+            if getattr(self, "equipment", None) is not None:
+                weapon = self.equipment.get_item("main_hand")
+                if weapon and weapon.id == self.magic_lightning_id:
+                    self.equipment.main_hand = self.magic_lightning_prev_main_hand
+                    self._recalc_stats_from_equipment()
+
+            self.magic_lightning_prev_main_hand = None
+            print("Magic lightning expired. Weapon reverted.")
+
 
     # ============================================================
     # Collision helper
@@ -987,6 +1044,7 @@ class PlayerNode(AnimatedNode):
         self.magic_lightning_timer = self.magic_lightning_cooldown
         self.state = "cast"
         self.attack_timer = max(getattr(self, "attack_timer", 0.0), 0.25)
+        self.shoot_timer = self.shoot_cooldown
         return True, "OK"
 
 
@@ -1047,6 +1105,13 @@ class PlayerNode(AnimatedNode):
         weapon = None
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
+        
+        # ✅ ถ้าถือ magic_lightning -> ร่ายสายฟ้าแทนการฟัน (และห้าม fallback ไปฟัน)
+        if weapon and weapon.item_type == "weapon" and weapon.id == "magic_lightning":
+            ok, reason = self.cast_magic_lightning()
+            if not ok:
+                print(f"ใช้ magic_lightning ไม่ได้ ({reason})")
+            return
 
         # ถ้ามี bow_xxx อยู่ที่มือหลัก -> ยิงระยะไกล
         if weapon and weapon.item_type == "weapon" and weapon.id.startswith("bow_"):
@@ -1101,11 +1166,13 @@ class PlayerNode(AnimatedNode):
         self._update_bow_power(dt)
 
         # นับเวลาบัฟสายฟ้า
+        self._update_magic_lightning_buff(dt)
+
+        # cooldown การปล่อยสายฟ้า
         if getattr(self, "magic_lightning_timer", 0.0) > 0:
             self.magic_lightning_timer -= dt
             if self.magic_lightning_timer < 0:
                 self.magic_lightning_timer = 0.0
-
 
         # นับเวลาถูกโจมตี (ใช้เล่นแอนิเมชัน hurt)
         if getattr(self, "hurt_timer", 0.0) > 0:
