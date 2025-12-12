@@ -115,7 +115,7 @@ class EnemyNode(AnimatedNode):
         # <--- เพิ่มส่วนนี้: คุณสมบัติการชนแบบวงกลม (เหมือนใน player_node.py) --->
         # ใช้ center (Vector2) + radius สำหรับระบบชนแบบวงกลม
         self.pos = pygame.math.Vector2(self.rect.center)
-        self.radius: float = 8.0  # กำหนดขนาดรัศมี (อาจลองปรับ 8.0 - 10.0 ตามขนาดศัตรู)
+        self.radius: float = 40.0  # กำหนดขนาดรัศมี (อาจลองปรับ 10.0 - 20.0 ตามขนาดศัตรู)
 
         # เส้น boundary สำหรับชน (รับค่าจาก GameScene)
         # list[tuple[pygame.Vector2, pygame.Vector2]]

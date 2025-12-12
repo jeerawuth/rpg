@@ -107,6 +107,18 @@ class ItemDatabase:
             )
         )
 
+        #   assets/graphics/images/items/magic_lightning_01.png
+        self._register(
+            ItemBase(
+                id="magic_lightning",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="Magic lightning Lv.1",
+                description="เวทย์สายฟ้า",
+                item_type="weapon",
+                max_stack=1,
+                icon_key="items/magic_lightning_01.png",  # เฟรมแรกของอนิเมชัน
+            )
+        )
+
         # ---------- Shield / Armor ----------
         # ไอเท็มโล่
         # แนะนำไฟล์:

@@ -360,32 +360,32 @@
     },
     {
       "type": "goblin",
-      "pos": [1400, 650],
+      "pos": [1100, 650],
       "spawn_time": 20 
     },
     {
       "type": "slime_green",
-      "pos": [1400, 400],
+      "pos": [950, 400],
       "spawn_time": 25 
     },
         {
       "type": "slime_green",
-      "pos": [1600, 460],
+      "pos": [1300, 460],
       "spawn_time": 25 
     },
     {
       "type": "goblin",
-      "pos": [1860, 680],
+      "pos": [1260, 680],
       "spawn_time": 25 
     },
         {
       "type": "slime_green",
-      "pos": [1400, 600],
+      "pos": [900, 600],
       "spawn_time": 25 
     },
         {
       "type": "troll",
-      "pos": [1500, 460],
+      "pos": [700, 460],
       "spawn_time": 25 
     }
   ],
@@ -405,6 +405,12 @@
     {
       "item_id": "sword_all_direction",
       "pos": [1104, 576], 
+      "amount": 1,
+      "spawn_time": 10
+    },
+        {
+      "item_id": "sword_all_direction_2",
+      "pos": [904, 676], 
       "amount": 1,
       "spawn_time": 10
     },

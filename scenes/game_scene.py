@@ -285,7 +285,7 @@ class GameScene(BaseScene):
                 distance_sq = distance_vec.length_squared()
 
                 # 2. คำนวณรัศมีที่ควรห่างกัน (enemy1.radius + enemy2.radius)
-                # สมมติว่าศัตรูทุกตัวใช้ radius = 8.0 (ตามที่ตั้งใน enemy_node.py)
+                # สมมติว่าศัตรูทุกตัวใช้ radius = 20.0 (ตามที่ตั้งใน enemy_node.py)
                 # ถ้าศัตรูมีขนาดไม่เท่ากัน ให้ใช้รัศมีของแต่ละตัว
                 combined_radius = enemy1.radius + enemy2.radius
                 combined_radius_sq = combined_radius * combined_radius

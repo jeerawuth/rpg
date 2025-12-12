@@ -344,27 +344,27 @@
     },
         {
       "type": "orc",
-      "pos": [856, 1024],
+      "pos": [856, 890],
       "spawn_time": 0 
     },
     {
       "type": "goblin",
-      "pos": [656, 920],
+      "pos": [656, 720],
       "spawn_time": 10 
     },
     {
       "type": "orc",
-      "pos": [956, 800],
+      "pos": [956, 600],
       "spawn_time": 20 
     },
     {
       "type": "goblin",
-      "pos": [1046, 900],
+      "pos": [790, 900],
       "spawn_time": 30 
     },
     {
       "type": "boss_orc",
-      "pos": [1280, 750],
+      "pos": [680, 750],
       "spawn_time": 30 
     }
   ],

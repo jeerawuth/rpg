@@ -32,19 +32,18 @@ class GameApp:
             sprite_scale=0.2,   # ขนาดตัวละคร / enemy
             tile_scale=1.0,      # ขนาด tile
             projectile_scale=0.1,  # ลูกธนู
-            item_scale=0.1,        # ค่าเริ่มต้นของ items ทุกชนิด
+            item_scale=0.2,        # ค่าเริ่มต้นของ items ทุกชนิด
             item_scale_overrides={
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
                 "items/bow_power": 0.2,
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
                 "items/potion_small": 0.1,
-                # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
+                # ขนาดไอเท็มโล่
                 "items/shield": 0.1,
-                # โล่ใหญ่กว่าไอเท็มอื่นนิดนึง
+                # ขนาดไอเท็มฟันรอบทิศทาง
                 "items/sword_all_direction": 0.2,
             },
         )
-
 
         self.audio = AudioManager(self.resources)
         self.scene_manager = SceneManager(self)

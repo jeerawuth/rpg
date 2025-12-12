@@ -6,34 +6,33 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from entities.enemy_node import EnemyNode
-from entities.born_effect_node import BornEffectNode   # 💡 เพิ่ม import ตรงนี้
+from entities.born_effect_node import BornEffectNode
 from world.level_data import LevelData
 
 
 class SpawnManager:
     def __init__(self, game, level_data: LevelData,
                  enemy_group, all_sprites_group) -> None:
-        """
-        game             = GameApp
-        level_data       = LevelData ที่ได้จาก load_level("level01")
-        enemy_group      = pygame.sprite.Group() สำหรับศัตรู
-        all_sprites_group= group รวมทุก sprite
-        """
         self.game = game
         self.enemy_group = enemy_group
         self.all_sprites_group = all_sprites_group
 
-        self._elapsed: float = 0.0   # เวลาในด่าน (วินาที)
+        self._elapsed: float = 0.0
         self._schedule: List[Dict[str, Any]] = []
 
-        # สร้างตาราง spawn จาก enemy_spawns ใน level_data
+        # ✅ เก็บเอฟเฟ็กต์ที่กำลังเล่นอยู่ แยกตาม spawn_id
+        self._active_effects: dict[int, BornEffectNode] = {}
+
+        spawn_id = 0
+
         for spawn in level_data.enemy_spawns:
-            spawn_time = float(spawn.get("spawn_time", 0.0))  # เวลาเกิดศัตรูจริง
+            spawn_id += 1
+
+            spawn_time = float(spawn.get("spawn_time", 0.0))
             enemy_type = spawn["type"]
             pos = tuple(spawn["pos"])
 
-            # ---------- Event 1: สร้าง BornEffectNode ล่วงหน้า 1.5 วิ ----------
-            # เงื่อนไขใหม่: ถ้า spawn_time == 0 → ไม่ต้องสร้าง BornEffectNode
+            # ถ้ากำหนดเวลาเกิด (>0) -> มี born_effect ก่อน
             if spawn_time > 0.0:
                 effect_time = max(0.0, spawn_time - 1.5)
                 self._schedule.append({
@@ -42,33 +41,37 @@ class SpawnManager:
                     "type": enemy_type,
                     "pos": pos,
                     "spawned": False,
+                    "spawn_id": spawn_id,
                 })
 
-            # ---------- Event 2: สร้าง Enemy จริง (ทุกกรณี) ----------
+            # enemy เกิด "หลัง effect จบจริง" (ไม่ต้องตรง spawn_time ก็ได้)
             self._schedule.append({
                 "time": spawn_time,
                 "kind": "enemy",
                 "type": enemy_type,
                 "pos": pos,
                 "spawned": False,
+                "spawn_id": spawn_id,
+                "wait_effect": (spawn_time > 0.0),
             })
 
+        # ✅ กันบั๊กเรื่อง break (ในโค้ดเดิมคอมเมนต์บอกว่า sort แล้ว แต่จริง ๆ ยังไม่ sort)
+        # และทำให้ born_effect มาก่อน enemy หากเวลาเท่ากัน
+        self._schedule.sort(key=lambda e: (e["time"], 0 if e["kind"] == "born_effect" else 1))
 
     @property
     def is_finished(self) -> bool:
-        """คืน True ถ้า spawn ครบทุกตัวแล้ว (ไม่มีตัวรอเกิดแล้ว)"""
         if not self._schedule:
             return True
         return all(entry["spawned"] for entry in self._schedule)
 
     def reset(self) -> None:
-        """รีเซ็ตเวลาและสถานะ spawn (ถ้าจะใช้ซ้ำซ้อนด่าน)"""
         self._elapsed = 0.0
+        self._active_effects.clear()
         for entry in self._schedule:
             entry["spawned"] = False
 
     def update(self, dt: float) -> None:
-        """ให้ GameScene เรียกทุกเฟรม เพื่อเช็คว่าถึงเวลาสร้างศัตรูตัวไหนหรือยัง"""
         if not self._schedule:
             return
 
@@ -78,21 +81,27 @@ class SpawnManager:
             if entry["spawned"]:
                 continue
 
-            # ยังไม่ถึงเวลา spawn → หยุด loop ได้เลย (เพราะ list ถูก sort แล้ว)
             if self._elapsed < entry["time"]:
                 break
 
-            # เช็คชนิด event
             if entry["kind"] == "born_effect":
-                # สร้างเอฟเฟกต์แจ้งเกิดศัตรู (ใส่แค่ all_sprites พอ)
-                BornEffectNode(
+                eff = BornEffectNode(
                     self.game,
                     entry["pos"],
                     self.all_sprites_group,
                 )
+                self._active_effects[entry["spawn_id"]] = eff
+                entry["spawned"] = True
+                continue
 
-            elif entry["kind"] == "enemy":
-                # ถึงเวลาแล้ว → สร้าง EnemyNode ใส่ group
+            if entry["kind"] == "enemy":
+                # ✅ ถ้ามี born_effect ให้รอจนมัน "จบจริง" (ถูก kill) ก่อน
+                if entry.get("wait_effect", False):
+                    eff = self._active_effects.get(entry["spawn_id"])
+                    if eff is not None and eff.alive():
+                        # เอฟเฟ็กต์ยังเล่นอยู่ -> ยังไม่ spawn enemy
+                        continue
+
                 EnemyNode(
                     self.game,
                     entry["pos"],
@@ -101,4 +110,7 @@ class SpawnManager:
                     enemy_id=entry["type"],
                 )
 
-            entry["spawned"] = True
+                entry["spawned"] = True
+                # cleanup
+                self._active_effects.pop(entry["spawn_id"], None)
+
