@@ -13,6 +13,9 @@ from .projectile_node import ProjectileNode
 from entities.slash_effect_node import SlashEffectNode
 # ดาบฟันตามแนวโค้ง
 from entities.sword_slash_arc_node import SwordSlashArcNode
+# สายฟ้า
+from entities.lightning_effect_node import LightningEffectNode
+
 
 
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
@@ -210,6 +213,11 @@ class PlayerNode(AnimatedNode):
         # ตัวแปรสำหรับบัฟ sword_all_direction
         self.sword_all_dir_timer: float = 0.0
         self.sword_all_dir_prev_main_hand: str | None = None
+
+        # ----- Magic lightning cooldown -----
+        self.magic_lightning_cooldown = 2.0
+        self.magic_lightning_timer = 0.0
+
 
         # ตัวแปรสำหรับบัฟ Bow Power
         self.bow_power_timer: float = 0.0
@@ -941,6 +949,46 @@ class PlayerNode(AnimatedNode):
 
         # ตั้ง cooldown โจมตี
         self.shoot_timer = self.shoot_cooldown
+    
+    # โจมตีด้วยสายฟ้า
+    def cast_magic_lightning(self, radius: float = 350.0) -> tuple[bool, str]:
+        if self.magic_lightning_timer > 0:
+            return False, "ติดคูลดาวน์"
+
+        enemies = getattr(self.game, "enemies", None)
+        if enemies is None:
+            return False, "ไม่พบกลุ่มศัตรู (game.enemies)"
+
+        center = pygame.Vector2(self.rect.center)
+        r2 = radius * radius
+
+        targets = []
+        for e in enemies.sprites():
+            if getattr(e, "is_dead", False):
+                continue
+            if (pygame.Vector2(e.rect.center) - center).length_squared() <= r2:
+                targets.append(e)
+
+        if not targets:
+            return False, "ไม่มีศัตรูในระยะ"
+
+        # ดาเมจเวท: ปรับสูตรได้
+        base_damage = 40 + getattr(self.stats, "magic", 0) * 12
+        packet = DamagePacket(base=float(base_damage), damage_type="magic", scaling_attack=0.0)
+
+        for e in targets:
+            LightningEffectNode(self.rect.center, e.rect.center, self.game.all_sprites)
+            e.take_hit(self.stats, packet)
+
+            # stun สั้น ๆ (Enemy มี hurt_timer อยู่แล้ว)
+            if hasattr(e, "hurt_timer"):
+                e.hurt_timer = max(getattr(e, "hurt_timer", 0.0), 0.25)
+
+        self.magic_lightning_timer = self.magic_lightning_cooldown
+        self.state = "cast"
+        self.attack_timer = max(getattr(self, "attack_timer", 0.0), 0.25)
+        return True, "OK"
+
 
 
     def _shoot_projectile(self) -> None:
@@ -1051,6 +1099,13 @@ class PlayerNode(AnimatedNode):
 
         # นับเวลาบัฟธนู
         self._update_bow_power(dt)
+
+        # นับเวลาบัฟสายฟ้า
+        if getattr(self, "magic_lightning_timer", 0.0) > 0:
+            self.magic_lightning_timer -= dt
+            if self.magic_lightning_timer < 0:
+                self.magic_lightning_timer = 0.0
+
 
         # นับเวลาถูกโจมตี (ใช้เล่นแอนิเมชัน hurt)
         if getattr(self, "hurt_timer", 0.0) > 0:

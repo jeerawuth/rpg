@@ -54,6 +54,29 @@ class InventoryScene(BaseScene):
 
         item = stack.item
 
+        # ==================================================================
+        # เคสฟาดสายฟ้า (ใช้แล้วหมดไป มีเวลาจำกัด)
+        # ==================================================================
+
+        if item.id == "magic_lightning":
+            if not hasattr(self.player, "cast_magic_lightning"):
+                print("ใช้ magic_lightning ไม่ได้: PlayerNode ยังไม่มี cast_magic_lightning()")
+                return
+
+            ok, reason = self.player.cast_magic_lightning(radius=350.0)
+            if not ok:
+                print(f"ใช้ magic_lightning ไม่ได้ ({reason})")
+                return
+
+            # ใช้สำเร็จ → ค่อยลบของ 1 ชิ้น
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(self.selected_index, None)
+
+            self.game.scene_manager.pop_scene()
+            return
+
+
         # ---------- เคสพิเศษ: ดาบรอบทิศทาง = ไอเท็มกดใช้ (ใช้แล้วหายไป) ----------
         # รองรับทั้ง sword_all_direction (10 วิ) และ sword_all_direction_2 (20 วิ)
         if item.id in ("sword_all_direction", "sword_all_direction_2"):
@@ -101,6 +124,7 @@ class InventoryScene(BaseScene):
             
             print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
             return
+
 
         # ---------- เคสทั่วไป: equip ตามประเภทของไอเท็ม ----------
         # ตัดสินใจว่าจะใส่ช่องไหนตามประเภทของไอเท็ม

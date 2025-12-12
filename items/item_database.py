@@ -113,7 +113,7 @@ class ItemDatabase:
                 id="magic_lightning",  # 👈 ให้ตรงกับที่ GameScene ใช้
                 name="Magic lightning Lv.1",
                 description="เวทย์สายฟ้า",
-                item_type="weapon",
+                item_type="consumable",  # ✅ เปลี่ยนจาก weapon",
                 max_stack=1,
                 icon_key="items/magic_lightning_01.png",  # เฟรมแรกของอนิเมชัน
             )
