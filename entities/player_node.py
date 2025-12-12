@@ -82,14 +82,16 @@ class PlayerNode(AnimatedNode):
         # ---------- SFX (ใช้ ResourceManager โหลดเสียง) ----------
         self.sfx_slash = self.game.resources.load_sound("sfx/slash.wav")
         self.sfx_bow_shoot = self.game.resources.load_sound("sfx/bow_shoot.wav")
+        self.sfx_magic_lightning = self.game.resources.load_sound("sfx/magic_lightning.wav")
 
         # ใช้ pickup_itemp.wav เป็นเสียงเก็บไอเท็ม
         self.sfx_item_pickup = self.game.resources.load_sound("sfx/pickup_item.wav")
 
         self.sfx_slash.set_volume(0.7)
         self.sfx_bow_shoot.set_volume(0.7)
-        # ถ้าอยากให้ตอนเก็บของเบากว่านิดนึงก็ได้ เช่น:
-        # self.sfx_item_pickup.set_volume(0.5)
+        self.sfx_magic_lightning.set_volume(0.7)
+        # ตอนเก็บของเบากว่านิดนึง
+        self.sfx_item_pickup.set_volume(0.5)
 
         # รูปดาบสำหรับแอนิเมชันวิ่งตามเส้นโค้ง
         try:
@@ -1040,6 +1042,10 @@ class PlayerNode(AnimatedNode):
             # stun สั้น ๆ (Enemy มี hurt_timer อยู่แล้ว)
             if hasattr(e, "hurt_timer"):
                 e.hurt_timer = max(getattr(e, "hurt_timer", 0.0), 0.25)
+        
+        # เล่นเสียงฟ้าผ่า
+        if hasattr(self, "sfx_magic_lightning"):
+            self.sfx_magic_lightning.play()
 
         self.magic_lightning_timer = self.magic_lightning_cooldown
         self.state = "cast"
