@@ -40,9 +40,9 @@ class MainMenuScene(BaseScene):
         surface.blit(title_surf, title_surf.get_rect(center=(w // 2, h // 3)))
 
         lines = [
-            "ENTER - Start Game",
-            "O     - Options",
-            "ESC   - Exit",
+            "ENTER - เริ่มเกม",
+            "O     - ตัวเลือก",
+            "ESC   - ออกจากเกม",
         ]
         # Panel สำหรับเมนู (พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว)
         # วาดบล็อกข้อความแบบ center เอง เพื่อให้สวยและอ่านง่าย

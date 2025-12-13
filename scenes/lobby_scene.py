@@ -23,7 +23,9 @@ class LobbyScene(BaseScene):
                     # เข้าเกมจริง (match start)
                     self.game.scene_manager.set_scene(GameScene(self.game))
                 elif event.key == pygame.K_ESCAPE:
-                    self.game.scene_manager.pop_scene()
+                    # กำหนดให้ออกจากเกม หรือย้อนกลับไปยังจุดที่่ต้องการ
+                    # self.game.scene_manager.pop_scene()
+                    self.game.quit()
 
     def update(self, dt: float) -> None:
         pass
@@ -31,7 +33,7 @@ class LobbyScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((0, 40, 60))
         w, h = surface.get_size()
-        title = self.font.render("Lobby (placeholder)", True, self.HUD_TEXT_COLOR)
+        title = self.font.render("เลือกสมรภูมิ", True, self.HUD_TEXT_COLOR)
         # Panel ให้ข้อความอ่านชัดทุกฉาก
         panel = pygame.Rect(0, 0, 520, 140)
         panel.center = (w // 2, h // 2 - 20)
@@ -39,5 +41,5 @@ class LobbyScene(BaseScene):
 
         surface.blit(title, title.get_rect(center=(w // 2, h // 3)))
 
-        hint = self.font.render("ENTER - Start Match | ESC - Back", True, self.HUD_TEXT_MUTED)
+        hint = self.font.render("ENTER - เริ่มเกม | ESC - ออกจากเกม", True, self.HUD_TEXT_MUTED)
         surface.blit(hint, hint.get_rect(center=(w // 2, h // 2)))

@@ -633,7 +633,7 @@ class GameScene(BaseScene):
         if self.stage_clear:
             # ทำ overlay ทึบเล็กน้อย
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
+            overlay.fill((0, 0, 0, 100))
             surface.blit(overlay, (0, 0))
 
             text = "STAGE CLEAR"
