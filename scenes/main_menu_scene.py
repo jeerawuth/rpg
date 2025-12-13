@@ -43,6 +43,24 @@ class MainMenuScene(BaseScene):
             "O     - Options",
             "ESC   - Exit",
         ]
-        for i, text in enumerate(lines):
-            t_surf = self.menu_font.render(text, True, (200, 200, 200))
-            surface.blit(t_surf, t_surf.get_rect(center=(w // 2, h // 2 + i * 40)))
+        # Panel สำหรับเมนู (พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว)
+        # วาดบล็อกข้อความแบบ center เอง เพื่อให้สวยและอ่านง่าย
+        line_h = self.menu_font.get_height()
+        widths = [self.menu_font.size(t)[0] for t in lines]
+        block_w = max(widths)
+        block_h = len(lines) * line_h + (len(lines) - 1) * 10
+
+        panel = pygame.Rect(0, 0, block_w + 40, block_h + 30)
+        panel.center = (w // 2, h // 2 + 10)
+        self.draw_panel(surface, panel, alpha=self.HUD_BG_ALPHA)
+
+        y = panel.top + 15
+        for t in lines:
+            # วาดแบบ center
+            t_surf = self.menu_font.render(t, True, self.HUD_TEXT_COLOR)
+            rect = t_surf.get_rect(centerx=panel.centerx, y=y)
+            # shadow
+            s_surf = self.menu_font.render(t, True, self.HUD_SHADOW_COLOR)
+            surface.blit(s_surf, (rect.x + 1, rect.y + 1))
+            surface.blit(t_surf, rect)
+            y += line_h + 10

@@ -113,6 +113,10 @@ class PlayerNode(AnimatedNode):
         self.hurt_timer: float = 0.0
         self.is_dead: bool = False
 
+        # death sequence flags
+        self.death_anim_started: bool = False
+        self.death_anim_done: bool = False
+
         self.velocity = pygame.Vector2(0, 0)
         self.facing = pygame.Vector2(0, 1)
 
@@ -804,7 +808,11 @@ class PlayerNode(AnimatedNode):
             return
 
         if frames is not self.frames:
-            self.set_frames(frames, reset=False)
+            if state == "dead":
+                # เล่นท่าตายแบบไม่ loop และเริ่มที่เฟรมแรก
+                self.set_frames(frames, loop=False, reset=True)
+            else:
+                self.set_frames(frames, reset=False)
 
 
 
@@ -1239,6 +1247,8 @@ class PlayerNode(AnimatedNode):
         if result.killed:
             print("[Player] died")
             self.is_dead = True
+            self.death_anim_started = True
+            self.death_anim_done = False
             self.hurt_timer = 0.0
             # หยุดการเคลื่อนที่
             self.velocity.update(0, 0)
@@ -1294,3 +1304,7 @@ class PlayerNode(AnimatedNode):
         self._apply_animation()
 
         super().update(dt)
+
+        # ถ้าท่าตายเล่นจบแล้ว
+        if getattr(self, "is_dead", False) and self.state == "dead" and getattr(self, "finished", False):
+            self.death_anim_done = True

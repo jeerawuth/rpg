@@ -25,8 +25,17 @@ class OptionsScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((15, 15, 40))
         w, h = surface.get_size()
-        title = self.font.render("Options (placeholder)", True, (255, 255, 255))
+        title = self.font.render("Options (placeholder)", True, self.HUD_TEXT_COLOR)
         surface.blit(title, title.get_rect(center=(w // 2, h // 3)))
 
-        hint = self.font.render("ESC / BACKSPACE - Back", True, (200, 200, 200))
-        surface.blit(hint, hint.get_rect(center=(w // 2, h // 2)))
+        lines = ["ESC / BACKSPACE - Back"]
+        # วาดข้อความพร้อมแผงหลัง (มาตรฐาน HUD)
+        # วางไว้กลางจอ
+        line_h = self.font.get_height()
+        block_w = max(self.font.size(t)[0] for t in lines)
+        block_h = line_h
+        panel = pygame.Rect(0, 0, block_w + 40, block_h + 26)
+        panel.center = (w // 2, h // 2)
+        self.draw_panel(surface, panel, alpha=self.HUD_BG_ALPHA)
+
+        self.draw_text(surface, lines[0], (panel.left + 20, panel.top + 13 - line_h // 2), self.font, color=self.HUD_TEXT_COLOR, shadow=True)

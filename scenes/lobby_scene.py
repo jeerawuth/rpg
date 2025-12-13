@@ -30,8 +30,13 @@ class LobbyScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((0, 40, 60))
         w, h = surface.get_size()
-        title = self.font.render("Lobby (placeholder)", True, (255, 255, 255))
+        title = self.font.render("Lobby (placeholder)", True, self.HUD_TEXT_COLOR)
+        # Panel ให้ข้อความอ่านชัดทุกฉาก
+        panel = pygame.Rect(0, 0, 520, 140)
+        panel.center = (w // 2, h // 2 - 20)
+        self.draw_panel(surface, panel, alpha=self.HUD_BG_ALPHA)
+
         surface.blit(title, title.get_rect(center=(w // 2, h // 3)))
 
-        hint = self.font.render("ENTER - Start Match | ESC - Back", True, (220, 220, 220))
+        hint = self.font.render("ENTER - Start Match | ESC - Back", True, self.HUD_TEXT_MUTED)
         surface.blit(hint, hint.get_rect(center=(w // 2, h // 2)))

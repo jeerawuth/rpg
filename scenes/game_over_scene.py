@@ -38,11 +38,12 @@ class GameOverScene(BaseScene):
         surface.blit(overlay, (0, 0))
 
         w, h = surface.get_size()
-        title = self.font_big.render("Game Over", True, (255, 255, 255))
+        title = self.font_big.render("Game Over", True, self.HUD_TEXT_COLOR)
         surface.blit(title, title.get_rect(center=(w // 2, h // 3)))
 
-        score = self.font_small.render(f"Score: {self.score}", True, (230, 230, 230))
-        surface.blit(score, score.get_rect(center=(w // 2, h // 2)))
+        # แสดง score
+        # score = self.font_small.render(f"Score: {self.score}", True, self.HUD_TEXT_MUTED)
+        # surface.blit(score, score.get_rect(center=(w // 2, h // 2)))
 
-        hint = self.font_small.render("ENTER - Main Menu | ESC - Quit", True, (230, 230, 230))
-        surface.blit(hint, hint.get_rect(center=(w // 2, h // 2 + 50)))
+        hint = self.font_small.render("ENTER - Main Menu | ESC - Quit", True, self.HUD_TEXT_MUTED)
+        surface.blit(hint, hint.get_rect(center=(w // 2, h // 2)))

@@ -168,24 +168,28 @@ class InventoryScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         w, h = surface.get_size()
 
-        # พื้นหลังทึบหน่อย
-        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        surface.blit(overlay, (0, 0))
+        # พื้นหลัง dim (มาตรฐานเดียวกันทุกซีน)
+        self.draw_dim_overlay(surface, alpha=180)
 
         # Title
-        title_surf = self.title_font.render("Inventory", True, (255, 255, 255))
+        title_surf = self.title_font.render("Inventory", True, self.HUD_TEXT_COLOR)
         surface.blit(title_surf, title_surf.get_rect(center=(w // 2, 40)))
 
         # Hint: อธิบายการกดปุ่ม
         hint_text = "UP/DOWN: Move  |  ENTER: Equip (weapon→main, armor→armor)  |  I/ESC: Close"
-        hint = self.font.render(hint_text, True, (200, 200, 200))
+        hint = self.font.render(hint_text, True, self.HUD_TEXT_MUTED)
         surface.blit(hint, hint.get_rect(center=(w // 2, 100)))
 
         # แสดงไอเทมเป็น list
         start_x = 200
         start_y = 140
         line_h = 28
+
+        # แผง HUD สำหรับรายการไอเท็ม/อุปกรณ์ (พื้นหลังดำโปร่ง 10%)
+        panel_h = self.player.inventory.size * line_h + 90
+        panel_rect = pygame.Rect(start_x - 24, start_y - 18, 470, panel_h)
+        self.draw_panel(surface, panel_rect, alpha=self.HUD_BG_ALPHA)
+
 
         for i in range(self.player.inventory.size):
             stack = self.player.inventory.get(i)

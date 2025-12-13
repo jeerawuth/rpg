@@ -33,6 +33,9 @@ class GameScene(BaseScene):
 
         # สถานะเกมโอเวอร์
         self.game_over_triggered = False
+        self.death_waiting = False  # รอให้แอนนิเมชันตายเล่นจบก่อนค่อย Game Over
+        self.death_wait_timer = 0.0
+        self.death_wait_timeout = 1.2  # กันกรณีไม่มีเฟรม dead แล้วเกมค้าง
 
         # เก็บชื่อเลเวลปัจจุบัน (เอาไว้ใช้เปลี่ยนด่าน)
         self.level_id = level_id
@@ -321,11 +324,27 @@ class GameScene(BaseScene):
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
         
-        # เช็คเกมโอเวอร์
-        if self.player.is_dead and not self.game_over_triggered:
-            pygame.mixer.stop()
-            self.game_over_triggered = True
-            self.game.scene_manager.push_scene(GameOverScene(self.game, score=0))
+        # เช็คเกมโอเวอร์ (รอให้แอนิเมชันตายเล่นจบก่อน)
+        if self.player.is_dead:
+            # หยุดเสียงทันทีเมื่อเริ่มตาย แต่ยังไม่เปลี่ยนฉาก
+            if not self.death_waiting:
+                pygame.mixer.stop()
+                self.death_waiting = True
+
+            # นับเวลารอฉากตาย
+            self.death_wait_timer += dt
+
+            death_done = getattr(self.player, "death_anim_done", False)
+            # fallback: ถ้าไม่ได้ใช้ flag ให้เช็ค finished ของ AnimatedNode ตอน state=dead
+            if not death_done and getattr(self.player, "state", "") == "dead":
+                death_done = bool(getattr(self.player, "finished", False))
+
+            if self.death_wait_timer >= self.death_wait_timeout:
+                death_done = True
+
+            if death_done and not self.game_over_triggered:
+                self.game_over_triggered = True
+                self.game.scene_manager.push_scene(GameOverScene(self.game, score=0))
 
 
         # ถ้าด่านถูกเคลียร์แล้ว ให้แสดงข้อความ Stage Clear ชั่วคราว
@@ -517,14 +536,23 @@ class GameScene(BaseScene):
 
         # HUD (วาดแบบ fixed screen)
         lines = [
-            "Game Scene (Camera + Tilemap + Combat)",
-            "WASD - Move | SPACE - Attack | I - Inventory",
+            # "Game Scene (Camera + Tilemap + Combat)",
+            # "WASD - Move | SPACE - Attack | I - Inventory",
             f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
             f"Enemies: {len(self.enemies.sprites())}",
         ]
-        for i, t in enumerate(lines):
-            t_surf = self.font.render(t, True, (10, 10, 10))
-            surface.blit(t_surf, (20, 20 + i * 24))
+        # ทำให้ HUD อ่านชัดทุกฉาก: พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว + เงา
+        self.draw_text_block(
+            surface,
+            lines,
+            (16, 16),
+            self.font,
+            padding=10,
+            line_gap=4,
+            panel_alpha=self.HUD_BG_ALPHA,
+            text_color=self.HUD_TEXT_COLOR,
+            shadow=True,
+        )
 
         # ถ้าอยู่ในสถานะเคลียร์ด่าน ให้แสดงข้อความ Stage Clear กลางจอ
         if self.stage_clear:

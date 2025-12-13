@@ -32,12 +32,12 @@ class PauseScene(BaseScene):
         surface.blit(overlay, (0, 0))
 
         w, h = surface.get_size()
-        title_surf = self.title_font.render("Paused", True, (255, 255, 255))
+        title_surf = self.title_font.render("Paused", True, self.HUD_TEXT_COLOR)
         surface.blit(title_surf, title_surf.get_rect(center=(w // 2, h // 3)))
 
         lines = [
             "ESC / P - Resume",
         ]
         for i, t in enumerate(lines):
-            t_surf = self.menu_font.render(t, True, (230, 230, 230))
+            t_surf = self.menu_font.render(t, True, self.HUD_TEXT_MUTED)
             surface.blit(t_surf, t_surf.get_rect(center=(w // 2, h // 2 + i * 32)))
