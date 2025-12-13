@@ -220,16 +220,19 @@ class PlayerNode(AnimatedNode):
         self.magic_lightning_cooldown = 1.0
         self.magic_lightning_timer = 0.0
 
-        # ----- Magic lightning buff duration (NEW) -----
+        # ----- Magic lightning buff duration -----
         self.magic_lightning_buff_timer: float = 0.0
         self.magic_lightning_prev_main_hand: str | None = None
         self.magic_lightning_id: str = "magic_lightning"
 
-
-
         # ตัวแปรสำหรับบัฟ Bow Power
         self.bow_power_timer: float = 0.0
         self.bow_power_prev_main_hand: str | None = None
+
+        # ฐานอาวุธก่อนบัฟอาวุธชั่วคราว (เพื่อให้สลับไอเท็มแล้วเวลาเริ่มใหม่จริง)
+        # ถ้ามีการสลับบัฟระหว่างทาง เราจะยึดฐานนี้เป็นอาวุธที่จะคืนเมื่อบัฟหมด
+        self.temp_weapon_base_main_hand: str | None = None
+        self.bow_power_id: str | None = None
 
     # ============================================================
     # Hp ratio calculation
@@ -377,6 +380,49 @@ class PlayerNode(AnimatedNode):
     # ============================================================
     # Temporary weapon buff: sword_all_direction
     # ============================================================
+
+    # ============================================================
+    # Temporary weapon buff utilities
+    # ============================================================
+    def _get_temp_weapon_base_main_hand(self) -> str | None:
+        """คืนค่าอาวุธฐาน (ก่อนเริ่มบัฟอาวุธชั่วคราว) และสร้างค่าให้ถ้ายังไม่มี"""
+        if getattr(self, "temp_weapon_base_main_hand", None) is not None:
+            return self.temp_weapon_base_main_hand
+
+        # ถ้ามี prev ของบัฟใด ๆ อยู่ ให้ยึดเป็นฐาน (กันเคสสลับบัฟซ้อนกัน)
+        for prev in (
+            getattr(self, "sword_all_dir_prev_main_hand", None),
+            getattr(self, "bow_power_prev_main_hand", None),
+            getattr(self, "magic_lightning_prev_main_hand", None),
+        ):
+            if prev is not None:
+                self.temp_weapon_base_main_hand = prev
+                return prev
+
+        if getattr(self, "equipment", None) is None:
+            return None
+
+        self.temp_weapon_base_main_hand = self.equipment.main_hand
+        return self.temp_weapon_base_main_hand
+
+    def _cancel_other_temp_weapon_buffs(self, keep: str) -> None:
+        """ยกเลิกบัฟอาวุธชั่วคราวตัวอื่น เพื่อไม่ให้ timer เก่ามาตัดของใหม่
+        keep: "sword" | "bow" | "lightning"
+        """
+        if keep != "sword":
+            self.sword_all_dir_timer = 0.0
+            self.sword_all_dir_prev_main_hand = None
+            if hasattr(self, "sword_all_direction_id"):
+                self.sword_all_direction_id = None
+
+        if keep != "bow":
+            self.bow_power_timer = 0.0
+            self.bow_power_prev_main_hand = None
+            self.bow_power_id = None
+
+        if keep != "lightning":
+            self.magic_lightning_buff_timer = 0.0
+            self.magic_lightning_prev_main_hand = None
     def activate_sword_all_direction(self, item_id, duration) -> None:
         """
         เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด
@@ -390,6 +436,10 @@ class PlayerNode(AnimatedNode):
         
         # เก็บ id ของการฟันรอบทิศทางว่าเป็นแบบไหน
         self.sword_all_direction_id = item_id
+
+        # --- ให้บัฟอาวุธชั่วคราวมีได้ครั้งละ 1 อย่าง ---
+        base = self._get_temp_weapon_base_main_hand()
+        self._cancel_other_temp_weapon_buffs(keep="sword")
 
         # ถ้ามีบัฟนี้อยู่แล้ว -> แค่รีเฟรชเวลา
         if self.sword_all_dir_timer > 0:
@@ -405,7 +455,7 @@ class PlayerNode(AnimatedNode):
             return
 
         # เก็บอาวุธเดิม (เก็บเป็น item_id ใน Equipment)
-        self.sword_all_dir_prev_main_hand = self.equipment.main_hand
+        self.sword_all_dir_prev_main_hand = base
 
         # ใส่ดาบรอบทิศทางดูจากค่า item_id เช่น sword_all_direction_2
         self.equipment.main_hand = item_id
@@ -424,16 +474,31 @@ class PlayerNode(AnimatedNode):
         if self.sword_all_dir_timer <= 0:
             return
 
+        # ถ้าระหว่างทางผู้เล่นเปลี่ยนอาวุธเอง -> ยกเลิก ไม่ revert ทับของใหม่
+        if getattr(self, "equipment", None) is not None:
+            current = self.equipment.main_hand
+            if getattr(self, "sword_all_direction_id", None) is not None:
+                if current != self.sword_all_direction_id:
+                    self.sword_all_dir_timer = 0.0
+                    self.sword_all_dir_prev_main_hand = None
+                    self.sword_all_direction_id = None
+                    self.temp_weapon_base_main_hand = None
+                    return
+
         self.sword_all_dir_timer -= dt
         if self.sword_all_dir_timer <= 0:
             self.sword_all_dir_timer = 0.0
 
-            # คืนอาวุธเดิม
             if getattr(self, "equipment", None) is not None:
-                self.equipment.main_hand = self.sword_all_dir_prev_main_hand
+                base = self.temp_weapon_base_main_hand
+                if base is None:
+                    base = self.sword_all_dir_prev_main_hand
+                self.equipment.main_hand = base
                 self._recalc_stats_from_equipment()
 
             self.sword_all_dir_prev_main_hand = None
+            self.sword_all_direction_id = None
+            self.temp_weapon_base_main_hand = None
 
     # ============================================================
     # Temporary weapon buff: Bow Power
@@ -444,6 +509,10 @@ class PlayerNode(AnimatedNode):
         """
         if getattr(self, "equipment", None) is None:
             return
+
+        self.bow_power_id = item_id
+        base = self._get_temp_weapon_base_main_hand()
+        self._cancel_other_temp_weapon_buffs(keep="bow")
 
         # ถ้ามีบัฟธนูนี้อยู่แล้ว -> แค่รีเฟรชเวลา
         if self.bow_power_timer > 0:
@@ -456,7 +525,7 @@ class PlayerNode(AnimatedNode):
             return
 
         # เก็บอาวุธเดิมไว้ก่อนเปลี่ยน
-        self.bow_power_prev_main_hand = self.equipment.main_hand
+        self.bow_power_prev_main_hand = base
 
         # สวมใส่ธนู power
         self.equipment.main_hand = item_id
@@ -472,22 +541,30 @@ class PlayerNode(AnimatedNode):
         if self.bow_power_timer <= 0:
             return
 
+        # ถ้าระหว่างทางผู้เล่นเปลี่ยนอาวุธเอง -> ยกเลิก ไม่ revert ทับของใหม่
+        if getattr(self, "equipment", None) is not None:
+            current = self.equipment.main_hand
+            if getattr(self, "bow_power_id", None) is not None and current != self.bow_power_id:
+                self.bow_power_timer = 0.0
+                self.bow_power_prev_main_hand = None
+                self.bow_power_id = None
+                self.temp_weapon_base_main_hand = None
+                return
+
         self.bow_power_timer -= dt
         if self.bow_power_timer <= 0:
             self.bow_power_timer = 0.0
 
-            # คืนอาวุธเดิมเมื่อหมดเวลา
             if getattr(self, "equipment", None) is not None:
-                # เช็คกันพลาดเผื่อ prev เป็น None
-                if self.bow_power_prev_main_hand is not None:
-                    self.equipment.main_hand = self.bow_power_prev_main_hand
-                else:
-                    # ถ้าไม่มีของเก่า ให้ถอดออกหรือใส่อาวุธพื้นฐาน (แล้วแต่ดีไซน์)
-                    self.equipment.main_hand = None 
-                
+                base = self.temp_weapon_base_main_hand
+                if base is None:
+                    base = self.bow_power_prev_main_hand
+                self.equipment.main_hand = base
                 self._recalc_stats_from_equipment()
 
             self.bow_power_prev_main_hand = None
+            self.bow_power_id = None
+            self.temp_weapon_base_main_hand = None
             print("Bow Power expired. Weapon reverted.")
 
     # ============================================================
@@ -496,6 +573,9 @@ class PlayerNode(AnimatedNode):
     def activate_magic_lightning(self, item_id: str, duration: float) -> None:
         if getattr(self, "equipment", None) is None:
             return
+
+        base = self._get_temp_weapon_base_main_hand()
+        self._cancel_other_temp_weapon_buffs(keep="lightning")
 
         # ถ้ากำลังถืออยู่แล้ว -> รีเฟรชเวลา + (ถ้าชนิดต่างกันค่อยสวมใหม่)
         if self.magic_lightning_buff_timer > 0:
@@ -506,7 +586,7 @@ class PlayerNode(AnimatedNode):
             return
 
         # เก็บอาวุธเดิม
-        self.magic_lightning_prev_main_hand = self.equipment.main_hand
+        self.magic_lightning_prev_main_hand = base
 
         # สวม magic_lightning เป็นอาวุธหลัก
         self.equipment.main_hand = item_id
@@ -517,21 +597,32 @@ class PlayerNode(AnimatedNode):
 
 
     def _update_magic_lightning_buff(self, dt: float) -> None:
+        """นับถอยหลังบัฟถือ magic_lightning และคืนอาวุธเดิมเมื่อหมดเวลา"""
         if self.magic_lightning_buff_timer <= 0:
             return
+
+        # ถ้าระหว่างทางผู้เล่นเปลี่ยนอาวุธเอง -> ยกเลิก ไม่ revert ทับของใหม่
+        if getattr(self, "equipment", None) is not None:
+            current = self.equipment.main_hand
+            if current != self.magic_lightning_id:
+                self.magic_lightning_buff_timer = 0.0
+                self.magic_lightning_prev_main_hand = None
+                self.temp_weapon_base_main_hand = None
+                return
 
         self.magic_lightning_buff_timer -= dt
         if self.magic_lightning_buff_timer <= 0:
             self.magic_lightning_buff_timer = 0.0
 
-            # คืนอาวุธเดิม (กันพลาด: คืนเฉพาะถ้ายังถือ magic_lightning อยู่จริง)
             if getattr(self, "equipment", None) is not None:
-                weapon = self.equipment.get_item("main_hand")
-                if weapon and weapon.id == self.magic_lightning_id:
-                    self.equipment.main_hand = self.magic_lightning_prev_main_hand
-                    self._recalc_stats_from_equipment()
+                base = self.temp_weapon_base_main_hand
+                if base is None:
+                    base = self.magic_lightning_prev_main_hand
+                self.equipment.main_hand = base
+                self._recalc_stats_from_equipment()
 
             self.magic_lightning_prev_main_hand = None
+            self.temp_weapon_base_main_hand = None
             print("Magic lightning expired. Weapon reverted.")
 
 
@@ -1209,4 +1300,3 @@ class PlayerNode(AnimatedNode):
         self._apply_animation()
 
         super().update(dt)
-
