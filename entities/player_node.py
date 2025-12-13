@@ -5,6 +5,8 @@ import math
 import pygame
 
 
+from core.buff_manager import BuffManager
+
 from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, DamageResult, compute_damage
 from combat.status_effect_system import StatusEffectManager
@@ -192,6 +194,9 @@ class PlayerNode(AnimatedNode):
             self.equipment = Equipment()
         else:
             self.equipment = None
+
+        # ---------- Buff Manager (ระบบบัฟแบบขยายง่าย) ----------
+        self.buff_manager = BuffManager()
 
         # คำนวณ stats จากอุปกรณ์ (ตอนเริ่มเกม)
         self._recalc_stats_from_equipment()
@@ -423,52 +428,22 @@ class PlayerNode(AnimatedNode):
         if keep != "lightning":
             self.magic_lightning_buff_timer = 0.0
             self.magic_lightning_prev_main_hand = None
-    def activate_sword_all_direction(self, item_id, duration) -> None:
-        """
-        เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด
-
-        - เก็บ main_hand เดิมไว้
-        - ใส่ sword_all_direction เป็นอาวุธหลัก
-        - นับเวลาถอยหลังด้วย self.sword_all_dir_timer
-        """
+    def activate_sword_all_direction(self, item_id: str, duration: float) -> None:
+        """เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด (ผ่าน BuffManager)"""
         if getattr(self, "equipment", None) is None:
             return
-        
-        # เก็บ id ของการฟันรอบทิศทางว่าเป็นแบบไหน
-        self.sword_all_direction_id = item_id
-
-        # --- ให้บัฟอาวุธชั่วคราวมีได้ครั้งละ 1 อย่าง ---
-        base = self._get_temp_weapon_base_main_hand()
-        self._cancel_other_temp_weapon_buffs(keep="sword")
-
-        # ถ้ามีบัฟนี้อยู่แล้ว -> แค่รีเฟรชเวลา
-        if self.sword_all_dir_timer > 0:
-            
-            # --- [แก้ไข BUG] ตรวจสอบว่ามีการเปลี่ยนชนิดดาบ (sword_all_direction_x) หรือไม่ ---
-            if self.equipment.main_hand != item_id:
-                # ถ้าเปลี่ยนชนิดดาบ ให้เปลี่ยนอุปกรณ์ที่ติดตั้งและรีคำนวณ stats ใหม่
-                self.equipment.main_hand = item_id
-                self._recalc_stats_from_equipment()
-            # -----------------------------------------------------------------------------------
-            
-            self.sword_all_dir_timer = duration
+        if not hasattr(self, "buff_manager") or self.buff_manager is None:
             return
 
-        # เก็บอาวุธเดิม (เก็บเป็น item_id ใน Equipment)
-        self.sword_all_dir_prev_main_hand = base
+        # group เดียวกัน = เปลี่ยนอาวุธชั่วคราวมีได้ทีละ 1
+        self.buff_manager.apply_weapon_override(
+            self,
+            weapon_id=item_id,
+            duration=duration,
+            group="weapon_override",
+            refresh="reset",
+        )
 
-        # ใส่ดาบรอบทิศทางดูจากค่า item_id เช่น sword_all_direction_2
-        self.equipment.main_hand = item_id
-
-        # อัปเดต stats ใหม่ตามอุปกรณ์
-        self._recalc_stats_from_equipment()
-
-        # ตั้งเวลา
-        self.sword_all_dir_timer = duration
-
-    # ============================================================
-    # Update sword_all_direction buff
-    # ============================================================
     def _update_sword_all_direction(self, dt: float) -> None:
         """นับถอยหลังบัฟ sword_all_direction และคืนอาวุธเดิมเมื่อหมดเวลา"""
         if self.sword_all_dir_timer <= 0:
@@ -503,38 +478,20 @@ class PlayerNode(AnimatedNode):
     # ============================================================
     # Temporary weapon buff: Bow Power
     # ============================================================
-    def activate_bow_power(self, item_id, duration) -> None:
-        """
-        เปิดใช้ธนูแบบมีเวลาจำกัด
-        """
+    def activate_bow_power(self, item_id: str, duration: float) -> None:
+        """เปิดใช้ธนู Power แบบมีเวลาจำกัด (ผ่าน BuffManager)"""
         if getattr(self, "equipment", None) is None:
             return
-
-        self.bow_power_id = item_id
-        base = self._get_temp_weapon_base_main_hand()
-        self._cancel_other_temp_weapon_buffs(keep="bow")
-
-        # ถ้ามีบัฟธนูนี้อยู่แล้ว -> แค่รีเฟรชเวลา
-        if self.bow_power_timer > 0:
-            # ถ้าเปลี่ยนชนิดธนู (เช่นจาก 1 เป็น 2) ให้ equip ใหม่
-            if self.equipment.main_hand != item_id:
-                self.equipment.main_hand = item_id
-                self._recalc_stats_from_equipment()
-            
-            self.bow_power_timer = duration
+        if not hasattr(self, "buff_manager") or self.buff_manager is None:
             return
 
-        # เก็บอาวุธเดิมไว้ก่อนเปลี่ยน
-        self.bow_power_prev_main_hand = base
-
-        # สวมใส่ธนู power
-        self.equipment.main_hand = item_id
-
-        # อัปเดต stats ใหม่ (เพิ่ม damage/crit)
-        self._recalc_stats_from_equipment()
-
-        # ตั้งเวลา
-        self.bow_power_timer = duration
+        self.buff_manager.apply_weapon_override(
+            self,
+            weapon_id=item_id,
+            duration=duration,
+            group="weapon_override",
+            refresh="reset",
+        )
 
     def _update_bow_power(self, dt: float) -> None:
         """นับถอยหลังบัฟ Bow และคืนอาวุธเดิมเมื่อหมดเวลา"""
@@ -571,30 +528,19 @@ class PlayerNode(AnimatedNode):
     # Temporary weapon buff: Magic Lightning
     # ============================================================
     def activate_magic_lightning(self, item_id: str, duration: float) -> None:
+        """ถือ magic_lightning ชั่วคราว (ผ่าน BuffManager)"""
         if getattr(self, "equipment", None) is None:
             return
-
-        base = self._get_temp_weapon_base_main_hand()
-        self._cancel_other_temp_weapon_buffs(keep="lightning")
-
-        # ถ้ากำลังถืออยู่แล้ว -> รีเฟรชเวลา + (ถ้าชนิดต่างกันค่อยสวมใหม่)
-        if self.magic_lightning_buff_timer > 0:
-            if self.equipment.main_hand != item_id:
-                self.equipment.main_hand = item_id
-                self._recalc_stats_from_equipment()
-            self.magic_lightning_buff_timer = duration
+        if not hasattr(self, "buff_manager") or self.buff_manager is None:
             return
 
-        # เก็บอาวุธเดิม
-        self.magic_lightning_prev_main_hand = base
-
-        # สวม magic_lightning เป็นอาวุธหลัก
-        self.equipment.main_hand = item_id
-        self._recalc_stats_from_equipment()  # ถ้าคุณมีเพิ่ม magic/crit ไว้ก็จะทำงาน :contentReference[oaicite:4]{index=4}
-
-        # ตั้งเวลาถือ
-        self.magic_lightning_buff_timer = duration
-
+        self.buff_manager.apply_weapon_override(
+            self,
+            weapon_id=item_id,
+            duration=duration,
+            group="weapon_override",
+            refresh="reset",
+        )
 
     def _update_magic_lightning_buff(self, dt: float) -> None:
         """นับถอยหลังบัฟถือ magic_lightning และคืนอาวุธเดิมเมื่อหมดเวลา"""
@@ -1255,15 +1201,9 @@ class PlayerNode(AnimatedNode):
     def update(self, dt: float) -> None:
         # buff/debuff
         self.status.update(dt)
-
-        # นับเวลาบัฟดาบรอบทิศทาง
-        self._update_sword_all_direction(dt)
-
-        # นับเวลาบัฟธนู
-        self._update_bow_power(dt)
-
-        # นับเวลาบัฟสายฟ้า
-        self._update_magic_lightning_buff(dt)
+        # buff แบบมีเวลา (อาวุธชั่วคราว ฯลฯ)
+        if hasattr(self, "buff_manager") and self.buff_manager:
+            self.buff_manager.update(self, dt)
 
         # cooldown การปล่อยสายฟ้า
         if getattr(self, "magic_lightning_timer", 0.0) > 0:

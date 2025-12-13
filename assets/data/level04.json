@@ -397,7 +397,7 @@
       "spawn_time": 0 
     },
     {
-      "item_id": "potion_small",
+      "item_id": "magic_lightning",
       "pos": [740, 452], 
       "amount": 1,
       "spawn_time": 5 
@@ -415,7 +415,7 @@
       "spawn_time": 10
     },
     {
-      "item_id": "bow_power_1",
+      "item_id": "bow_power_2",
       "pos": [1104, 576], 
       "amount": 1,
       "spawn_time": 10 

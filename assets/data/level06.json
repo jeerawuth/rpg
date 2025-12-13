@@ -1,6 +1,6 @@
 {
-  "id": "level05",
-  "next_level": "",
+  "id": "level06",
+  "next_level": "level07",
   "tileset": "overworld_level_06.png",
   "tile_size": 32,
   "width": 86,
