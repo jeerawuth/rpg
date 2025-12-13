@@ -477,13 +477,18 @@
       "amount": 1
     },
     {
-      "item_id": "bow_power_2",
+      "item_id": "magic_lightning",
       "pos": [1276, 456], 
       "amount": 1
     },
     {
       "item_id": "sword_all_direction_2",
       "pos": [956, 876], 
+      "amount": 1
+    },
+    {
+      "item_id": "sword_all_direction_2",
+      "pos": [1556, 1246], 
       "amount": 1
     }
   ],
