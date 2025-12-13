@@ -189,8 +189,8 @@ class PlayerNode(AnimatedNode):
         if Inventory is not None:
             self.inventory = Inventory(size=20)
             # ตัวอย่างของเริ่มต้น
-            self.inventory.add_item("potion_small", 5)
-            self.inventory.add_item("sword_basic", 1)
+            # self.inventory.add_item("potion_small", 5)
+            # self.inventory.add_item("sword_basic", 1)
         else:
             self.inventory = None
 

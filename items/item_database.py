@@ -33,7 +33,7 @@ class ItemDatabase:
                 item_type="consumable",
                 max_stack=20,
                 icon_key="items/potion_small_01.png",
-
+                ui_icon_key="ui/items/potion_small_1.png",   # ใช้ใน inventory HUD
                 # ใช้ค่าพวกนี้สำหรับเอฟเฟกต์ใน ItemNode
                 heal_amount=50,        # ฟื้น HP 50 ต่อ 1 ชิ้น
                 use_on_pickup=True,    # เก็บแล้วใช้ทันที (ไม่เข้า inventory)
@@ -51,6 +51,7 @@ class ItemDatabase:
                 item_type="weapon",
                 max_stack=1,
                 icon_key="items/sword_basic.png",
+                ui_icon_key="ui/items/sword_basic_1.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -66,6 +67,7 @@ class ItemDatabase:
                 item_type="weapon",
                 max_stack=1,
                 icon_key="items/sword_all_direction.png",
+                ui_icon_key="ui/items/sword_all_direction_1.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -77,6 +79,7 @@ class ItemDatabase:
                 item_type="weapon",
                 max_stack=1,
                 icon_key="items/sword_all_direction2_01.png",
+                ui_icon_key="ui/items/sword_all_direction_2.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -92,6 +95,7 @@ class ItemDatabase:
                 item_type="weapon",
                 max_stack=1,
                 icon_key="items/bow_power_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/bow_power_1.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -104,6 +108,7 @@ class ItemDatabase:
                 item_type="weapon",
                 max_stack=1,
                 icon_key="items/bow_power2_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/bow_power_2.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -116,6 +121,7 @@ class ItemDatabase:
                 item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
                 max_stack=1,
                 icon_key="items/magic_lightning_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/magic_lightning_1.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -128,6 +134,7 @@ class ItemDatabase:
                 item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
                 max_stack=1,
                 icon_key="items/magic_lightning2_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/magic_lightning_2.png",   # ใช้ใน inventory HUD
             )
         )
 
@@ -144,6 +151,7 @@ class ItemDatabase:
                 item_type="armor",
                 max_stack=1,
                 icon_key="items/shield_01.png",
+                ui_icon_key="ui/items/shield_1.png",   # ใช้ใน inventory HUD
             )
         )
 

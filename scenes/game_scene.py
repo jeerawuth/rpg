@@ -552,10 +552,10 @@ class GameScene(BaseScene):
         lines = [
             # "Game Scene (Camera + Tilemap + Combat)",
             # "WASD - Move | SPACE - Attack | I - Inventory",
-            f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
-            f"Enemies: {len(self.enemies.sprites())}",
-            f"Weapon: {weapon_name}",
-            f"Armor: {armor_name}",
+            f"ระดับพลังชีวิต: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
+            f"จำนวนศัตรู: {len(self.enemies.sprites())}",
+            f"อาวุธ: {weapon_name}",
+            f"เกราะ: {armor_name}",
         ]
 
         # --- item buff countdown (BuffManager) ---

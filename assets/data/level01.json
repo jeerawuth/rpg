@@ -474,17 +474,17 @@
     {
       "item_id": "magic_lightning",
       "pos": [1076, 376], 
-      "amount": 4
+      "amount": 1
     },
     {
       "item_id": "magic_lightning_2",
       "pos": [1276, 456], 
-      "amount": 5
+      "amount": 1
     },
     {
       "item_id": "sword_all_direction_2",
       "pos": [956, 876], 
-      "amount": 2
+      "amount": 1
     },
     {
       "item_id": "sword_all_direction_2",
