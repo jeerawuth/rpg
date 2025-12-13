@@ -345,9 +345,16 @@ class PlayerNode(AnimatedNode):
 
 
             elif weapon.id == "magic_lightning":
-                # ธนูเพิ่มดาเมจ + โอกาสติดคริ
+                # สายฟ้าฟาดเพิ่มดาเมจ + โอกาสติดคริ
                 self.stats.magic += 10
                 self.stats.crit_chance += 0.09
+
+            elif weapon.id == "magic_lightning_2":
+                # สายฟ้าฟาดทุกตัว เพิ่มดาเมจ + โอกาสติดคริ
+                self.stats.magic += 15
+                self.stats.crit_chance += 0.10
+
+
             elif weapon.id == "bow_power_1":
                 # ธนูเพิ่มดาเมจ + โอกาสติดคริ
                 self.stats.attack += 4
@@ -381,10 +388,6 @@ class PlayerNode(AnimatedNode):
                 # self.stats.resistances["physical"] = \
                 #     self.stats.resistances.get("physical", 0.0) + 0.1
 
-
-    # ============================================================
-    # Temporary weapon buff: sword_all_direction
-    # ============================================================
 
     # ============================================================
     # Temporary weapon buff utilities
@@ -428,6 +431,11 @@ class PlayerNode(AnimatedNode):
         if keep != "lightning":
             self.magic_lightning_buff_timer = 0.0
             self.magic_lightning_prev_main_hand = None
+
+
+    # ============================================================
+    # Temporary weapon buff: sword_all_direction
+    # ============================================================
     def activate_sword_all_direction(self, item_id: str, duration: float) -> None:
         """เปิดใช้ดาบตี 8 ทิศแบบมีเวลาจำกัด (ผ่าน BuffManager)"""
         if getattr(self, "equipment", None) is None:
@@ -1090,6 +1098,45 @@ class PlayerNode(AnimatedNode):
         self.shoot_timer = self.shoot_cooldown
         return True, "OK"
 
+    # โจมตีด้วยสายฟ้าทุกตัว 5 วินาที
+    def cast_magic_lightning_all_area(self) -> tuple[bool, str]:
+        if self.magic_lightning_timer > 0:
+            return False, "ติดคูลดาวน์"
+
+        enemies = getattr(self.game, "enemies", None)
+        if enemies is None:
+            return False, "ไม่พบกลุ่มศัตรู (game.enemies)"
+
+        targets = []
+        for e in enemies.sprites():
+            if getattr(e, "is_dead", False):
+                continue
+            targets.append(e)
+        
+
+        if not targets:
+            return False, "ไม่มีศัตรู"
+
+        base_damage = 40 + getattr(self.stats, "magic", 0) * 12
+        packet = DamagePacket(base=float(base_damage), damage_type="magic", scaling_attack=0.0)
+
+        for e in targets:
+            LightningEffectNode(self.rect.center, e.rect.center, self.game.all_sprites)
+            e.take_hit(self.stats, packet)
+
+            if hasattr(e, "hurt_timer"):
+                e.hurt_timer = max(getattr(e, "hurt_timer", 0.0), 0.25)
+
+        # เล่นเสียงฟ้าผ่า
+        if hasattr(self, "sfx_magic_lightning"):
+            self.sfx_magic_lightning.play()
+
+        self.magic_lightning_timer = self.magic_lightning_cooldown
+        self.state = "cast"
+        self.attack_timer = max(getattr(self, "attack_timer", 0.0), 0.25)
+        self.shoot_timer = self.shoot_cooldown
+        return True, "OK"
+
 
 
     def _shoot_projectile(self) -> None:
@@ -1154,6 +1201,13 @@ class PlayerNode(AnimatedNode):
             ok, reason = self.cast_magic_lightning()
             if not ok:
                 print(f"ใช้ magic_lightning ไม่ได้ ({reason})")
+            return
+        
+        # ✅ ถ้าถือ magic_lightning_2 -> ร่ายสายฟ้าแทนการฟันทุกตัว
+        if weapon and weapon.item_type == "weapon" and weapon.id == "magic_lightning_2":
+            ok, reason = self.cast_magic_lightning_all_area()
+            if not ok:
+                print(f"ใช้ magic_lightning_2 ไม่ได้ ({reason})")
             return
 
         # ถ้ามี bow_xxx อยู่ที่มือหลัก -> ยิงระยะไกล

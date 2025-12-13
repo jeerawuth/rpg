@@ -119,6 +119,18 @@ class ItemDatabase:
             )
         )
 
+        #   assets/graphics/images/items/magic_lightning2_01.png
+        self._register(
+            ItemBase(
+                id="magic_lightning_2",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="Magic lightning Lv.2 All Target",
+                description="เวทย์สายฟ้าทำลายศัตรูทุกตัว",
+                item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
+                max_stack=1,
+                icon_key="items/magic_lightning2_01.png",  # เฟรมแรกของอนิเมชัน
+            )
+        )
+
         # ---------- Shield / Armor ----------
         # ไอเท็มโล่
         # แนะนำไฟล์:

@@ -74,7 +74,25 @@ class InventoryScene(BaseScene):
             self.game.scene_manager.pop_scene()
             return
 
+        # ==================================================================
+        # เคส magic_lightning_2: เปิดบัฟถืออาวุธชั่วคราว (ไม่ร่ายทันที)
+        # ==================================================================
+        if item.id == "magic_lightning_2":
+            duration = 5.0  # ปรับได้ตามต้องการ
 
+            # ใช้แล้วหายไป 1 ชิ้น
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(self.selected_index, None)
+
+            if hasattr(self.player, "activate_magic_lightning"):
+                self.player.activate_magic_lightning(item_id=item.id, duration=duration)
+                print(f"ถือ magic_lightning 2 ({duration} วินาที) กด SPACE เพื่อร่ายสายฟ้า")
+            else:
+                print("PlayerNode ยังไม่มี activate_magic_lightning()")
+
+            self.game.scene_manager.pop_scene()
+            return
 
         # ---------- เคสพิเศษ: ดาบรอบทิศทาง = ไอเท็มกดใช้ (ใช้แล้วหายไป) ----------
         # รองรับทั้ง sword_all_direction (10 วิ) และ sword_all_direction_2 (20 วิ)

@@ -342,7 +342,7 @@
       "pos": [656, 375],
       "spawn_time": 0 
     },
-        {
+    {
       "type": "orc",
       "pos": [856, 890],
       "spawn_time": 0 
@@ -356,6 +356,16 @@
       "type": "orc",
       "pos": [956, 600],
       "spawn_time": 20 
+    },
+    {
+      "type": "slime_green",
+      "pos": [2400, 600],
+      "spawn_time": 20 
+    },
+    {
+      "type": "slime_green",
+      "pos": [1900, 700],
+      "spawn_time": 25 
     },
     {
       "type": "goblin",
@@ -372,20 +382,22 @@
     {
       "item_id": "bow_power_1",
       "pos": [276, 676], 
-      "amount": 1,
-      "spawn_time": 5 
+      "amount": 1
     },
     {
       "item_id": "sword_all_direction",
       "pos": [476, 1176], 
-      "amount": 1,
-      "spawn_time": 5 
+      "amount": 1
     },
     {
-      "item_id": "sword_all_direction",
+      "item_id": "magic_lightning",
       "pos": [376, 1276], 
-      "amount": 1,
-      "spawn_time": 5 
+      "amount": 1
+    },
+    {
+      "item_id": "magic_lightning_2",
+      "pos": [2700, 700], 
+      "amount": 1
     }
   ]
 }
