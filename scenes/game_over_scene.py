@@ -5,13 +5,14 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from config.settings import UI_FONT_PATH
 
 
 class GameOverScene(BaseScene):
     def __init__(self, game, score: int = 0) -> None:
         super().__init__(game)
-        self.font_big = pygame.font.Font(None, 64)
-        self.font_small = pygame.font.Font(None, 32)
+        self.font_big = self.game.resources.load_font(UI_FONT_PATH, 32)
+        self.font_small = self.game.resources.load_font(UI_FONT_PATH, 25)
         self.score = score
 
     def handle_events(self, events) -> None:

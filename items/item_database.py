@@ -28,7 +28,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="potion_small",
-                name="Small Potion",
+                name="ยาฟื้นฟูพลัง",
                 description="ยาฟื้นฟู HP ปริมาณเล็กน้อย",
                 item_type="consumable",
                 max_stack=20,
@@ -46,7 +46,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="sword_basic",
-                name="Basic Sword",
+                name="ดาบระดับ 1",
                 description="ดาบพื้นฐานสำหรับมือใหม่",
                 item_type="weapon",
                 max_stack=1,
@@ -61,7 +61,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="sword_all_direction",
-                name="All Direction Sword",
+                name="ฟันรอบทิศทางระดับ 1",
                 description="ดาบรอบทิศทาง",
                 item_type="weapon",
                 max_stack=1,
@@ -72,7 +72,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="sword_all_direction_2",
-                name="All Direction Sword Double 2x",
+                name="ฟันรอบทิศทางระดับ 2",
                 description="ดาบรอบทิศทางเวลา 2 เท่า",
                 item_type="weapon",
                 max_stack=1,
@@ -87,7 +87,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="bow_power_1",  # 👈 ให้ตรงกับที่ GameScene ใช้
-                name="Bow Power Lv.1",
+                name="ธนูระดับ 1",
                 description="เพิ่มพลังโจมตีของลูกธนู",
                 item_type="weapon",
                 max_stack=1,
@@ -99,7 +99,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="bow_power_2",  # 👈 ให้ตรงกับที่ GameScene ใช้
-                name="Bow Power Lv.2",
+                name="ธนูระดับ 2",
                 description="เพิ่มพลังโจมตีของลูกธนู 2 เท่า",
                 item_type="weapon",
                 max_stack=1,
@@ -111,7 +111,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="magic_lightning",  # 👈 ให้ตรงกับที่ GameScene ใช้
-                name="Magic lightning Lv.1",
+                name="เวทย์สายฟ้าระดับ 1",
                 description="เวทย์สายฟ้า",
                 item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
                 max_stack=1,
@@ -123,7 +123,7 @@ class ItemDatabase:
         self._register(
             ItemBase(
                 id="magic_lightning_2",  # 👈 ให้ตรงกับที่ GameScene ใช้
-                name="Magic lightning Lv.2 All Target",
+                name="เวทย์สายฟ้าระดับ 2",
                 description="เวทย์สายฟ้าทำลายศัตรูทุกตัว",
                 item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
                 max_stack=1,

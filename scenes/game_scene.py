@@ -15,12 +15,13 @@ from entities.decoration_node import DecorationNode
 
 from world.spawn_manager import SpawnManager
 from core.camera import Camera
-from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, UI_FONT_HUD_PATH
 from entities.item_node import ItemNode
 
 from .pause_scene import PauseScene
 from .game_over_scene import GameOverScene
 from .inventory_scene import InventoryScene
+from items.item_database import ITEM_DB
 
 # Projectile vs Enemies
 from combat.damage_system import DamagePacket  # แค่ type hint
@@ -29,13 +30,10 @@ from combat.damage_system import DamagePacket  # แค่ type hint
 class GameScene(BaseScene):
     def __init__(self, game, level_id: str = "level01") -> None:
         super().__init__(game)
-        self.font = pygame.font.Font(None, 32)
+        self.font = self.game.resources.load_font(UI_FONT_HUD_PATH, 22)
 
         # สถานะเกมโอเวอร์
         self.game_over_triggered = False
-        self.death_waiting = False  # รอให้แอนนิเมชันตายเล่นจบก่อนค่อย Game Over
-        self.death_wait_timer = 0.0
-        self.death_wait_timeout = 1.2  # กันกรณีไม่มีเฟรม dead แล้วเกมค้าง
 
         # เก็บชื่อเลเวลปัจจุบัน (เอาไว้ใช้เปลี่ยนด่าน)
         self.level_id = level_id
@@ -324,27 +322,11 @@ class GameScene(BaseScene):
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
         
-        # เช็คเกมโอเวอร์ (รอให้แอนิเมชันตายเล่นจบก่อน)
-        if self.player.is_dead:
-            # หยุดเสียงทันทีเมื่อเริ่มตาย แต่ยังไม่เปลี่ยนฉาก
-            if not self.death_waiting:
-                pygame.mixer.stop()
-                self.death_waiting = True
-
-            # นับเวลารอฉากตาย
-            self.death_wait_timer += dt
-
-            death_done = getattr(self.player, "death_anim_done", False)
-            # fallback: ถ้าไม่ได้ใช้ flag ให้เช็ค finished ของ AnimatedNode ตอน state=dead
-            if not death_done and getattr(self.player, "state", "") == "dead":
-                death_done = bool(getattr(self.player, "finished", False))
-
-            if self.death_wait_timer >= self.death_wait_timeout:
-                death_done = True
-
-            if death_done and not self.game_over_triggered:
-                self.game_over_triggered = True
-                self.game.scene_manager.push_scene(GameOverScene(self.game, score=0))
+        # เช็คเกมโอเวอร์
+        if self.player.is_dead and not self.game_over_triggered:
+            pygame.mixer.stop()
+            self.game_over_triggered = True
+            self.game.scene_manager.push_scene(GameOverScene(self.game, score=0))
 
 
         # ถ้าด่านถูกเคลียร์แล้ว ให้แสดงข้อความ Stage Clear ชั่วคราว
@@ -535,12 +517,104 @@ class GameScene(BaseScene):
 
 
         # HUD (วาดแบบ fixed screen)
+        # --- current equipment ---
+        eq = getattr(self.player, "equipment", None)
+
+        weapon_item = None
+        weapon_id = None
+        if eq is not None:
+            if hasattr(eq, "get_item"):
+                try:
+                    weapon_item = eq.get_item("main_hand")
+                except Exception:
+                    weapon_item = None
+            if weapon_item is None and hasattr(eq, "main_hand"):
+                weapon_id = getattr(eq, "main_hand", None)
+                if weapon_id:
+                    weapon_item = ITEM_DB.try_get(str(weapon_id))
+
+        armor_item = None
+        armor_id = None
+        if eq is not None:
+            if hasattr(eq, "get_item"):
+                try:
+                    armor_item = eq.get_item("armor")
+                except Exception:
+                    armor_item = None
+            if armor_item is None and hasattr(eq, "armor"):
+                armor_id = getattr(eq, "armor", None)
+                if armor_id:
+                    armor_item = ITEM_DB.try_get(str(armor_id))
+
+        weapon_name = getattr(weapon_item, "name", None) or (str(weapon_id) if weapon_id else "-")
+        armor_name = getattr(armor_item, "name", None) or (str(armor_id) if armor_id else "-")
+
         lines = [
             # "Game Scene (Camera + Tilemap + Combat)",
             # "WASD - Move | SPACE - Attack | I - Inventory",
             f"Player HP: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
             f"Enemies: {len(self.enemies.sprites())}",
+            f"Weapon: {weapon_name}",
+            f"Armor: {armor_name}",
         ]
+
+        # --- item buff countdown (BuffManager) ---
+        bm = getattr(self.player, "buff_manager", None)
+        effect_lines = []
+        if bm is not None and hasattr(bm, "effects"):
+            try:
+                effects = list(bm.effects)
+            except Exception:
+                effects = []
+            for eff in effects:
+                rem = float(getattr(eff, "remaining", 0.0) or 0.0)
+                if rem <= 0.0:
+                    continue
+
+                spec = getattr(eff, "spec", None)
+                eid = getattr(spec, "id", "") if spec is not None else ""
+                group = getattr(spec, "group", "") if spec is not None else ""
+
+                # แสดงเฉพาะบัฟที่เกี่ยวกับ "ไอเท็ม/อาวุธ/เกราะ"
+                if not (
+                    str(eid).startswith(("weapon_override:", "armor_override:", "magic_lightning_2"))
+                    or str(group) in ("weapon_override", "armor_override", "magic_lightning_2")
+                ):
+                    continue
+
+                label = str(eid) if eid else "buff"
+                prefix = ""
+                item_id = None
+
+                if ":" in label:
+                    prefix, item_id = label.split(":", 1)
+                else:
+                    item_id = label
+
+                # พยายามแปลงเป็นชื่อไอเท็มจาก database
+                item_name = None
+                if item_id:
+                    item = ITEM_DB.try_get(str(item_id))
+                    if item is not None:
+                        item_name = getattr(item, "name", None)
+
+                if prefix == "weapon_override":
+                    pretty = f"Weapon Buff: {item_name or item_id}"
+                elif prefix == "armor_override":
+                    pretty = f"Armor Buff: {item_name or item_id}"
+                else:
+                    pretty = f"Buff: {item_name or item_id}"
+
+                effect_lines.append(f"{pretty}: {rem:0.1f}s")
+
+        if effect_lines:
+            # กัน HUD ยาวเกินไป
+            lines.extend(effect_lines[:3])
+            if len(effect_lines) > 3:
+                lines.append(f"(+{len(effect_lines) - 3} more buffs)")
+        else:
+            lines.append("Item Buff: -")
+
         # ทำให้ HUD อ่านชัดทุกฉาก: พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว + เงา
         self.draw_text_block(
             surface,
@@ -554,7 +628,8 @@ class GameScene(BaseScene):
             shadow=True,
         )
 
-        # ถ้าอยู่ในสถานะเคลียร์ด่าน ให้แสดงข้อความ Stage Clear กลางจอ
+
+# ถ้าอยู่ในสถานะเคลียร์ด่าน ให้แสดงข้อความ Stage Clear กลางจอ
         if self.stage_clear:
             # ทำ overlay ทึบเล็กน้อย
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)

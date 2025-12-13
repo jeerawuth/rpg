@@ -6,12 +6,13 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from config.settings import UI_FONT_PATH
 
 
 class OptionsScene(BaseScene):
     def __init__(self, game) -> None:
         super().__init__(game)
-        self.font = pygame.font.Font(None, 32)
+        self.font = self.game.resources.load_font(UI_FONT_PATH, 32)
 
     def handle_events(self, events) -> None:
         for event in events:

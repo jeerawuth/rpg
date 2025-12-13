@@ -6,13 +6,14 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from config.settings import UI_FONT_PATH
 
 
 class MainMenuScene(BaseScene):
     def __init__(self, game) -> None:
         super().__init__(game)
-        self.title_font = pygame.font.Font(None, 72)
-        self.menu_font = pygame.font.Font(None, 36)
+        self.title_font = self.game.resources.load_font(UI_FONT_PATH, 42)
+        self.menu_font = self.game.resources.load_font(UI_FONT_PATH, 25)
 
     def handle_events(self, events) -> None:
         from .game_scene import GameScene  # import ภายในกันวงกลม

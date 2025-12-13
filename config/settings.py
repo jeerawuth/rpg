@@ -10,3 +10,6 @@ WINDOW_TITLE = "My 2D Action RPG"
 # Gameplay base values
 PLAYER_SPEED = 220  # pixels / second
 CAMERA_LERP = 0.1
+
+UI_FONT_PATH = "fonts/Kanit-Bold.ttf"
+UI_FONT_HUD_PATH = "fonts/GoogleSans.ttf"

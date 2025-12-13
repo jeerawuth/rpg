@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import pygame
 
+from collections import OrderedDict
+
 from .base_scene import BaseScene
-from items.item_database import ITEM_DB
+# from items.item_database import ITEM_DB
+from config.settings import UI_FONT_PATH, UI_FONT_HUD_PATH
 
 
 class InventoryScene(BaseScene):
@@ -12,10 +15,46 @@ class InventoryScene(BaseScene):
         super().__init__(game)
         self.player = player
 
-        self.font = pygame.font.Font(None, 28)
-        self.title_font = pygame.font.Font(None, 36)
+        self.font = self.game.resources.load_font(UI_FONT_PATH, 20)
+        self.title_font = self.game.resources.load_font(UI_FONT_HUD_PATH, 21)
 
         self.selected_index = 0
+
+        # cache: รายการไอเท็มแบบ "รวมซ้ำ" (item_id เดียวกันรวมเป็นก้อนเดียว)
+        # โครงสร้างแต่ละรายการ: {"item": ItemBase, "qty": int, "slots": [slot_index, ...]}
+        self._grouped_view_cache = []
+
+    def _build_grouped_view(self):
+        """รวมไอเท็มที่มี item_id ซ้ำกัน ให้แสดงเป็นบรรทัดเดียว พร้อมจำนวนรวม"""
+        inv = getattr(self.player, "inventory", None)
+        if inv is None:
+            return []
+
+        grouped = OrderedDict()
+        for slot_i in range(inv.size):
+            stack = inv.get(slot_i)
+            if stack is None:
+                continue
+
+            item = stack.item
+            g = grouped.get(item.id)
+            if g is None:
+                grouped[item.id] = {"item": item, "qty": int(stack.quantity), "slots": [slot_i]}
+            else:
+                g["qty"] += int(stack.quantity)
+                g["slots"].append(slot_i)
+
+        return list(grouped.values())
+
+    def _get_grouped_view(self):
+        # rebuild ทุกครั้งเพื่อกันจำนวนเปลี่ยนระหว่างเฟรม
+        self._grouped_view_cache = self._build_grouped_view()
+        # clamp selected_index ให้ไม่หลุด
+        if self._grouped_view_cache:
+            self.selected_index = max(0, min(self.selected_index, len(self._grouped_view_cache) - 1))
+        else:
+            self.selected_index = 0
+        return self._grouped_view_cache
 
     # ----------------- EVENTS -----------------
     def handle_events(self, events) -> None:
@@ -28,9 +67,11 @@ class InventoryScene(BaseScene):
                 # เลื่อนช่องเลือก
                 elif event.key == pygame.K_UP:
                     self.selected_index = max(0, self.selected_index - 1)
+                    self._get_grouped_view()  # clamp
                 elif event.key == pygame.K_DOWN:
-                    inv_size = self.player.inventory.size
-                    self.selected_index = min(inv_size - 1, self.selected_index + 1)
+                    view_len = len(self._get_grouped_view())
+                    if view_len > 0:
+                        self.selected_index = min(view_len - 1, self.selected_index + 1)
 
                 # กด ENTER เพื่อ equip
                 elif event.key == pygame.K_RETURN:
@@ -48,7 +89,13 @@ class InventoryScene(BaseScene):
         if inv is None or eq is None:
             return
 
-        stack = inv.get(self.selected_index)
+        view = self._get_grouped_view()
+        if not view:
+            return
+
+        slot_index = view[self.selected_index]["slots"][0]
+
+        stack = inv.get(slot_index)
         if stack is None:
             return
 
@@ -63,7 +110,7 @@ class InventoryScene(BaseScene):
             # ใช้แล้วหายไป 1 ชิ้น
             stack.quantity -= 1
             if stack.quantity <= 0:
-                inv.set(self.selected_index, None)
+                inv.set(slot_index, None)
 
             if hasattr(self.player, "activate_magic_lightning"):
                 self.player.activate_magic_lightning(item_id=item.id, duration=duration)
@@ -83,7 +130,7 @@ class InventoryScene(BaseScene):
             # ใช้แล้วหายไป 1 ชิ้น
             stack.quantity -= 1
             if stack.quantity <= 0:
-                inv.set(self.selected_index, None)
+                inv.set(slot_index, None)
 
             if hasattr(self.player, "activate_magic_lightning"):
                 self.player.activate_magic_lightning(item_id=item.id, duration=duration)
@@ -108,7 +155,7 @@ class InventoryScene(BaseScene):
             # 2. ลบออกจากช่องปัจจุบัน 1 ชิ้น
             stack.quantity -= 1
             if stack.quantity <= 0:
-                inv.set(self.selected_index, None)
+                inv.set(slot_index, None)
 
             # 3. สั่งให้ player เปิดบัฟตามระยะเวลาที่กำหนด ส่งชื่อไอเท็มและรหัสไอดีของไอเท็มไป
             if hasattr(self.player, "activate_sword_all_direction"):
@@ -132,7 +179,7 @@ class InventoryScene(BaseScene):
             # 2. ลบออกจาก inventory 1 ชิ้น
             stack.quantity -= 1
             if stack.quantity <= 0:
-                inv.set(self.selected_index, None)
+                inv.set(slot_index, None)
 
             # 3. สั่งให้ player เปิดบัฟธนู
             # (เราจะต้องไปสร้างฟังก์ชัน activate_bow_power ใน PlayerNode)
@@ -154,7 +201,7 @@ class InventoryScene(BaseScene):
             print(f"Item '{item.name}' (type={item.item_type}) equip ไม่ได้")
             return
 
-        equipped = eq.equip_from_inventory(inv, self.selected_index, slot=slot)
+        equipped = eq.equip_from_inventory(inv, slot_index, slot=slot)
         if equipped:
             print(f"Equipped {item.name} -> slot {slot}")
         else:
@@ -168,47 +215,42 @@ class InventoryScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         w, h = surface.get_size()
 
-        # พื้นหลัง dim (มาตรฐานเดียวกันทุกซีน)
-        self.draw_dim_overlay(surface, alpha=180)
+        # พื้นหลังทึบหน่อย
+        overlay = pygame.Surface((w, h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        surface.blit(overlay, (0, 0))
 
         # Title
-        title_surf = self.title_font.render("Inventory", True, self.HUD_TEXT_COLOR)
+        title_surf = self.title_font.render("Inventory", True, (255, 255, 255))
         surface.blit(title_surf, title_surf.get_rect(center=(w // 2, 40)))
 
         # Hint: อธิบายการกดปุ่ม
         hint_text = "UP/DOWN: Move  |  ENTER: Equip (weapon→main, armor→armor)  |  I/ESC: Close"
-        hint = self.font.render(hint_text, True, self.HUD_TEXT_MUTED)
+        hint = self.font.render(hint_text, True, (200, 200, 200))
         surface.blit(hint, hint.get_rect(center=(w // 2, 100)))
 
-        # แสดงไอเทมเป็น list
+        # แสดงไอเทมแบบรวมซ้ำ (item_id เดียวกัน แสดงบรรทัดเดียว + จำนวนรวม)
         start_x = 200
         start_y = 140
         line_h = 28
 
-        # แผง HUD สำหรับรายการไอเท็ม/อุปกรณ์ (พื้นหลังดำโปร่ง 10%)
-        panel_h = self.player.inventory.size * line_h + 90
-        panel_rect = pygame.Rect(start_x - 24, start_y - 18, 470, panel_h)
-        self.draw_panel(surface, panel_rect, alpha=self.HUD_BG_ALPHA)
+        grouped = self._get_grouped_view()
+        if not grouped:
+            empty_txt = self.font.render("(empty)", True, (180, 180, 180))
+            surface.blit(empty_txt, (start_x, start_y))
+        else:
+            for i, entry in enumerate(grouped):
+                item = entry["item"]
+                qty = entry["qty"]
 
+                # highlight ช่องที่เลือกอยู่
+                bg_rect = pygame.Rect(start_x - 10, start_y + i * line_h - 4, 520, line_h)
+                if i == self.selected_index:
+                    pygame.draw.rect(surface, (80, 80, 140), bg_rect)
 
-        for i in range(self.player.inventory.size):
-            stack = self.player.inventory.get(i)
-
-            # highlight ช่องที่เลือกอยู่
-            bg_rect = pygame.Rect(start_x - 10, start_y + i * line_h - 4, 420, line_h)
-            if i == self.selected_index:
-                pygame.draw.rect(surface, (80, 80, 140), bg_rect)
-
-            if stack is None:
-                text = f"{i:02d}: (empty)"
-                color = (120, 120, 120)
-            else:
-                item = stack.item
-                text = f"{i:02d}: {item.name} x{stack.quantity} [{item.item_type}]"
-                color = (255, 255, 255)
-
-            t_surf = self.font.render(text, True, color)
-            surface.blit(t_surf, (start_x, start_y + i * line_h))
+                text = f"{i:02d}: {item.name} X{qty} [{item.item_type}]"
+                t_surf = self.font.render(text, True, (255, 255, 255))
+                surface.blit(t_surf, (start_x, start_y + i * line_h))
 
         # ------------ แสดงของที่ equip อยู่ ------------
         eq = self.player.equipment
@@ -227,7 +269,7 @@ class InventoryScene(BaseScene):
         else:
             armor_txt = "Armor: (none)"
 
-        base_y = start_y + self.player.inventory.size * line_h + 20
+        base_y = start_y + max(1, len(grouped)) * line_h + 20
 
         main_surf = self.font.render(main_txt, True, (255, 255, 0))
         armor_surf = self.font.render(armor_txt, True, (255, 255, 0))
