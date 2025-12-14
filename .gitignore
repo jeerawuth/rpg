@@ -1,0 +1,61 @@
+# -----------------------------
+# Python cache / compiled files
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+venv/
+ENV/
+env/
+
+# -----------------------------
+# Python packaging / build
+# -----------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# -----------------------------
+# Test / coverage (ถ้ามี)
+# -----------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# -----------------------------
+# Logs
+# -----------------------------
+*.log
+
+# -----------------------------
+# VS Code
+# -----------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# -----------------------------
+# OS junk files
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Optional: local runtime / temp saves
+# (ใส่เฉพาะถ้าโปรเจกต์คุณสร้างไฟล์พวกนี้เอง)
+# -----------------------------
+# saves/
+# tmp/
+# screenshots/
