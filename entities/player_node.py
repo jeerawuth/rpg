@@ -387,8 +387,21 @@ class PlayerNode(AnimatedNode):
         # ----- armor / shield -----
         armor_item = self.equipment.get_item("armor")
         if armor_item:
-            if armor_item.id == "shield":
-                self.stats.armor += 6
+            # รองรับทั้งของเดิม ("shield") และแบบ consumable ("shield_1", "shield_2")
+            bonus_map = {
+                "shield": 6,
+                "shield_1": 6,
+                "shield_2": 10,
+            }
+            if armor_item.id in bonus_map:
+                self.stats.armor += bonus_map[armor_item.id]
+            elif armor_item.id.startswith("shield_"):
+                # เผื่ออนาคตมี shield_3, shield_4 ...
+                try:
+                    level = int(armor_item.id.split("_", 1)[1])
+                    self.stats.armor += 4 + (level * 2)
+                except Exception:
+                    self.stats.armor += 6
                 # self.stats.resistances["physical"] = \
                 #     self.stats.resistances.get("physical", 0.0) + 0.1
 
@@ -435,6 +448,62 @@ class PlayerNode(AnimatedNode):
         if keep != "lightning":
             self.magic_lightning_buff_timer = 0.0
             self.magic_lightning_prev_main_hand = None
+            
+    # ============================================================
+    # Temporary weapon buff: sword_all_direction
+    # ============================================================
+    def activate_shield(self, item_id: str, duration: float) -> None:
+        """เปิดใช้เกราะชั่วคราว (ผ่าน BuffManager)
+
+        item_id: เช่น "shield_1", "shield_2"
+        duration: ระยะเวลาบัฟ (วินาที)
+        """
+        if getattr(self, "equipment", None) is None:
+            return
+        if not hasattr(self, "buff_manager") or self.buff_manager is None:
+            return
+
+        # group เดียวกัน = ใส่เกราะชั่วคราวได้ทีละ 1
+        # refresh="reset" = กดใช้ซ้ำจะรีเซ็ตเวลา
+        if hasattr(self.buff_manager, "apply_armor_override"):
+            self.buff_manager.apply_armor_override(
+                self,
+                armor_id=item_id,
+                duration=duration,
+                group="armor_override",
+                refresh="reset",
+            )
+        else:
+            # fallback: ถ้า buff_manager รุ่นเก่ายังไม่มี apply_armor_override
+            try:
+                prev = getattr(self.equipment, "armor", None)
+                setattr(self.equipment, "armor", item_id)
+                self._recalc_stats_from_equipment()
+                # เก็บไว้เพื่อ revert แบบง่าย (ไม่ซ้อน)
+                self._shield_prev_armor = prev
+                self._shield_timer = float(duration)
+                self._shield_active_id = item_id
+            except Exception:
+                return
+
+
+    def _update_shield(self, dt: float) -> None:
+        """(legacy) นับถอยหลังบัฟ shield แบบ fallback เมื่อไม่มี BuffManager"""
+        if getattr(self, "_shield_timer", 0.0) <= 0:
+            return
+        self._shield_timer -= dt
+        if self._shield_timer <= 0:
+            self._shield_timer = 0.0
+            if getattr(self, "equipment", None) is not None:
+                # revert เฉพาะถ้ายังใส่เกราะบัฟนี้อยู่
+                current = getattr(self.equipment, "armor", None)
+                active = getattr(self, "_shield_active_id", None)
+                if active is None or current == active:
+                    setattr(self.equipment, "armor", getattr(self, "_shield_prev_armor", None))
+                    self._recalc_stats_from_equipment()
+            self._shield_prev_armor = None
+            self._shield_active_id = None
+
 
 
     # ============================================================
@@ -1268,6 +1337,10 @@ class PlayerNode(AnimatedNode):
         # buff แบบมีเวลา (อาวุธชั่วคราว ฯลฯ)
         if hasattr(self, "buff_manager") and self.buff_manager:
             self.buff_manager.update(self, dt)
+
+        # fallback shield timer (ถ้าใช้โหมด legacy)
+        if hasattr(self, "_shield_timer") and getattr(self, "_shield_timer", 0.0) > 0:
+            self._update_shield(dt)
 
         # cooldown การปล่อยสายฟ้า
         if getattr(self, "magic_lightning_timer", 0.0) > 0:

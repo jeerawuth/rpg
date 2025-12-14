@@ -39,7 +39,7 @@ class GameApp:
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
                 "items/potion_small": 0.1,
                 # ขนาดไอเท็มโล่
-                "items/shield": 0.1,
+                "items/shield": 0.2,
                 # ขนาดไอเท็มฟันรอบทิศทาง
                 "items/sword_all_direction": 0.2,
             },

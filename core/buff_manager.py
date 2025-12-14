@@ -83,6 +83,37 @@ class WeaponOverrideEffect(Effect):
                 player._recalc_stats_from_equipment()
 
 
+class ArmorOverrideEffect(Effect):
+    """บัฟเปลี่ยนเกราะชั่วคราว (armor slot)"""
+
+    def __init__(self, spec: EffectSpec, armor_id: str) -> None:
+        super().__init__(spec)
+        self.armor_id = armor_id
+        self._prev_armor: Optional[str] = None
+
+    def on_apply(self, player) -> None:
+        eq = getattr(player, "equipment", None)
+        if eq is None:
+            return
+
+        self._prev_armor = getattr(eq, "armor", None)
+        setattr(eq, "armor", self.armor_id)
+
+        if hasattr(player, "_recalc_stats_from_equipment"):
+            player._recalc_stats_from_equipment()
+
+    def on_remove(self, player) -> None:
+        eq = getattr(player, "equipment", None)
+        if eq is None:
+            return
+
+        if getattr(eq, "armor", None) == self.armor_id:
+            setattr(eq, "armor", self._prev_armor)
+
+            if hasattr(player, "_recalc_stats_from_equipment"):
+                player._recalc_stats_from_equipment()
+
+
 class BuffManager:
     """ตัวจัดการบัฟแบบขยายง่าย"""
 
@@ -148,3 +179,20 @@ class BuffManager:
             refresh=refresh,
         )
         self.add(player, WeaponOverrideEffect(spec, weapon_id=weapon_id))
+
+    def apply_armor_override(
+        self,
+        player,
+        armor_id: str,
+        duration: float,
+        *,
+        group: str = "armor_override",
+        refresh: str = "reset",
+    ) -> None:
+        spec = EffectSpec(
+            id=f"armor_override:{armor_id}",
+            duration=duration,
+            group=group,
+            refresh=refresh,
+        )
+        self.add(player, ArmorOverrideEffect(spec, armor_id=armor_id))

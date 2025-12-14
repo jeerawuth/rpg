@@ -531,9 +531,45 @@
       "type": "boss_orc",
       "pos": [866, 650],
       "spawn_time": 25 
-    },    {
+    },    
+    {
       "type": "undead",
       "pos": [966, 750],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [976, 850],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1066, 750],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1076, 850],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1780, 650],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1795, 750],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1800, 740],
+      "spawn_time": 30 
+    },
+    {
+      "type": "undead",
+      "pos": [1890, 710],
       "spawn_time": 30 
     }
 

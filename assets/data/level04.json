@@ -392,7 +392,7 @@
   "item_spawns": [
     {
       "item_id": "potion_small",
-      "pos": [1260, 752], 
+      "pos": [1260, 652], 
       "amount": 1,
       "spawn_time": 0 
     },

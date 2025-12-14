@@ -6,10 +6,12 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from core.audio_manager import MusicCue
 from config.settings import UI_FONT_PATH
 
 
 class PauseScene(BaseScene):
+    MUSIC = MusicCue(intro="battle_intro_5s.wav", loop="battle_loop_30s.wav", volume=0.3, fade_ms=120, fadeout_ms=120)
     def __init__(self, game) -> None:
         super().__init__(game)
         self.title_font = self.game.resources.load_font(UI_FONT_PATH, 42)

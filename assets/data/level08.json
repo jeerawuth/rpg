@@ -515,16 +515,26 @@
     {
       "type": "slime_green",
       "pos": [986, 500],
-      "spawn_time": 15 
+      "spawn_time": 5 
+    },
+    {
+      "type": "slime_green",
+      "pos": [926, 480],
+      "spawn_time": 10 
     },
     {
       "type": "goblin",
       "pos": [1056, 650],
-      "spawn_time": 15 
+      "spawn_time": 10 
     },
     {
       "type": "boss_orc",
       "pos": [866, 650],
+      "spawn_time": 20 
+    },
+    {
+      "type": "undead",
+      "pos": [1283, 415],
       "spawn_time": 20 
     }
   ],
@@ -546,6 +556,19 @@
       "pos": [1059, 1347],
       "amount": 1,
       "spawn_time": 10 
+    },
+    {
+      "item_id": "magic_lightning_2",
+      "pos": [1290, 418],
+      "amount": 1,
+      "spawn_time": 10 
+    },
+    {
+      "item_id": "shield_1",
+      "pos": [640, 1118],
+      "amount": 1,
+      "spawn_time": 10 
     }
+
   ]
 }

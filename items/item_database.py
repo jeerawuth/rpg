@@ -145,7 +145,7 @@ class ItemDatabase:
         #   assets/graphics/images/items/shield_02.png
         self._register(
             ItemBase(
-                id="shield",
+                id="shield_1",
                 name="Wooden Shield",
                 description="โล่ไม้สำหรับป้องกัน",
                 item_type="armor",

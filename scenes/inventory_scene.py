@@ -4,11 +4,13 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from core.audio_manager import MusicCue
 from items.item_database import ITEM_DB
 from config.settings import UI_FONT_HUD_PATH, UI_FONT_PATH
 
 
 class InventoryScene(BaseScene):
+    MUSIC = MusicCue(intro="battle_intro_5s.wav", loop="battle_loop_30s.wav", volume=0.3, fade_ms=120, fadeout_ms=120)
     """
     Inventory UI (icon grid + grouped by item_id)
 
@@ -146,6 +148,24 @@ class InventoryScene(BaseScene):
 
             if hasattr(self.player, "activate_magic_lightning"):
                 self.player.activate_magic_lightning(item_id=item.id, duration=duration)
+
+            print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
+            return
+        
+
+        # ---------- เคสพิเศษ: เกราะ ----------
+        if item.id in ("shield_1", "shield_2"):
+            # shield 
+            duration = 10.0
+            if item.id == "shield_2":
+                duration = 15.0
+
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(slot_index, None)
+
+            if hasattr(self.player, "activate_shield"):
+                self.player.activate_shield(item_id=item.id, duration=duration)
 
             print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
             return
