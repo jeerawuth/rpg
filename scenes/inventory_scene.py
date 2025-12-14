@@ -251,13 +251,13 @@ class InventoryScene(BaseScene):
             label = f"Selected: {sel_name}"
             if sel_count > 1:
                 label += f"  x{sel_count}"
-            label_surf = self.font.render(label, True, (255, 255, 255))
-            surface.blit(label_surf, (40, 105))
+            label_surf = self.font.render(label, True, (255, 215, 0))
+            surface.blit(label_surf, (40, 120))
 
 
         # พื้นที่กริด
-        margin_x = 40
-        margin_y = 120
+        margin_x = 100
+        margin_y = 200
         panel_w = w - margin_x * 2
         panel_h = h - margin_y - 40
 
@@ -266,11 +266,16 @@ class InventoryScene(BaseScene):
         surface.blit(panel, (margin_x, margin_y))
 
         # ค่ากริด
-        cell = 84
         pad = 12
-        cols = max(1, (panel_w - pad * 2) // cell)
+        cols = 4  # หรือ 3
+        available_w = panel_w - pad * 2
+
+        cell = available_w // cols
+        cell = min(cell, 120)   # กันมันใหญ่เกินไป (ปรับได้)
+        cell = max(cell, 84)    # กันมันเล็กเกินไป (ปรับได้)
+
         self._grid_cols = cols
-        icon_max = cell - 16
+        icon_max = cell - 4     # เดิม -16 (ทำให้ไอคอนใหญ่ขึ้น)
 
         # วาดไอเท็มเป็นกริด
         for idx, g in enumerate(self._grouped):
