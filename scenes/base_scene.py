@@ -4,6 +4,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+from core.audio_manager import MusicCue
 
 import pygame
 
@@ -13,6 +14,12 @@ if TYPE_CHECKING:
 
 
 class BaseScene(ABC):
+    MUSIC: MusicCue | None = None
+    OVERRIDE_MUSIC: bool = True  # ฉาก overlay (pause) ตั้ง False ได้
+
+    def get_music(self) -> MusicCue | None:
+        return self.MUSIC
+
     # ---------- HUD / UI standard style ----------
     HUD_BG_COLOR = (0, 0, 0)
     HUD_BG_ALPHA = int(0.10 * 255)  # 10% transparency

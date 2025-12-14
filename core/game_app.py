@@ -61,6 +61,9 @@ class GameApp:
                 if event.type == pygame.QUIT:
                     self.running = False
 
+            # ส่ง event ให้ AudioManager (intro->loop, pending start หลัง fade)
+            self.audio.handle_events(events)
+
             # ส่ง event ให้ scene ปัจจุบัน
             self.scene_manager.handle_events(events)
             self.scene_manager.update(dt)

@@ -50,7 +50,7 @@ class ItemDatabase:
                 description="ดาบพื้นฐานสำหรับมือใหม่",
                 item_type="weapon",
                 max_stack=1,
-                icon_key="items/sword_basic.png",
+                icon_key="items/sword_basic_01.png",
                 ui_icon_key="ui/items/sword_basic_1.png",   # ใช้ใน inventory HUD
             )
         )

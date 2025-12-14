@@ -4,6 +4,7 @@ from __future__ import annotations
 import pygame
 
 from .base_scene import BaseScene
+from core.audio_manager import MusicCue
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
 from entities.born_effect_node import BornEffectNode
@@ -28,9 +29,15 @@ from combat.damage_system import DamagePacket  # แค่ type hint
 
 
 class GameScene(BaseScene):
+    # ---------- BGM (basic) ----------
+    # intro 1 ครั้ง -> เข้าเพลงลูป
+    # (ไฟล์ต้องอยู่ใน assets/sounds/music/)
+    MUSIC = MusicCue(intro="battle_intro_5s.wav", loop="battle_loop_30s.wav", volume=0.3, fade_ms=120, fadeout_ms=120)
+
     def __init__(self, game, level_id: str = "level01") -> None:
         super().__init__(game)
         self.font = self.game.resources.load_font(UI_FONT_HUD_PATH, 22)
+
 
         # สถานะเกมโอเวอร์
         self.game_over_triggered = False
@@ -246,6 +253,9 @@ class GameScene(BaseScene):
 
     # ---------- EVENTS ----------
     def handle_events(self, events) -> None:
+        # ให้ AudioManager รับ event (เพื่อสลับ intro -> loop และจัดการ fade)
+        self.game.audio.handle_events(events)
+
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
