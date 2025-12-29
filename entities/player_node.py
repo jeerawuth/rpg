@@ -909,7 +909,7 @@ class PlayerNode(AnimatedNode):
                 if weapon.id == "sword_all_direction":
                     return 25
                 if weapon.id == "sword_all_direction_2":
-                    return 30
+                    return 50
         return 10
     
 

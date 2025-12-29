@@ -1,6 +1,6 @@
 # entities/slash_effect_node.py
 from __future__ import annotations
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 import math
 import pygame
 import random
@@ -10,50 +10,89 @@ from .animated_node import AnimatedNode
 
 class SlashEffectNode(AnimatedNode):
     """
-    เอฟเฟ็กต์ฟันดาบแบบส่วนโค้งในมุมมอง isometric 25°
+    Slash effect (PRO style, 8-direction) — แก้เฉพาะไฟล์นี้เท่านั้น
 
-    - รับ attack_rect (ตำแหน่งที่โจมตีใน world space ปกติ)
-    - รับ direction ("up", "down", "left", "right", "up_right", ...)
-    - สร้างเส้นโค้งรอบตัว player แล้วแปลงเป็น isometric
-    - วาดเป็นแสงฟุ้ง ๆ และค่อย ๆ จางหายไปเอง
+    ✅ Signature เดิมยังใช้ได้:
+        SlashEffectNode(game, attack_rect, direction, *groups)
+
+    ✅ เพิ่ม "รูปแบบ" โดยส่งค่าแบบ keyword-only:
+        SlashEffectNode(game, attack_rect, direction, *groups, style="diablo")
+        SlashEffectNode(game, attack_rect, direction, *groups, style="soulslike")
+        (ค่าเริ่มต้น = "normal" = แบบปัจจุบัน)
+
+    แนวทางที่เกมระดับโลกนิยม:
+    - สร้าง arc จาก "direction vector" (ไม่ฮาร์ดโค้ดตารางมุม) เพื่อให้ซ้าย/ขวาธรรมชาติ
+    - ทำ 2 hit ซ้อนกันให้เป็น X:
+        hit1 clockwise + center_offset (+)
+        hit2 counterclockwise + center_offset (-) + overlap
+    - world เป็น isometric 25° ได้ แต่ "เอฟเฟ็กต์" สามารถ stylize ด้วย iso angle / sweep / timing ได้
     """
 
-    # แมป "ทิศที่ผู้เล่นเห็นบนจอ" -> "ช่วงมุมบนวงกลม world" 45 องศามาตรฐาน 8 ทิศ
-    # _ARC_DEGS: dict[str, Tuple[float, float]] = {
-    #     # 4 ทิศหลัก
-    #     "down":       (22.5,  67.5),   # world  45° -> จอ "ลง"
-    #     "left":       (112.5, 157.5),  # world 135° -> จอ "ซ้าย"
-    #     "up":         (202.5, 247.5),  # world 225° -> จอ "ขึ้น"
-    #     "right":      (292.5, 337.5),  # world 315° -> จอ "ขวา"
-
-    #     # 4 ทิศเฉียง
-    #     "down_right": (337.5,  22.5),  # world   0° -> จอ "ล่าง-ขวา"
-    #     "down_left":  ( 67.5, 112.5),  # world  90° -> จอ "ล่าง-ซ้าย"
-    #     "up_left":    (157.5, 202.5),  # world 180° -> จอ "บน-ซ้าย"
-    #     "up_right":   (247.5, 292.5),  # world 270° -> จอ "บน-ขวา"
-    # }
-
-    # แมป "ทิศที่ผู้เล่นเห็นบนจอ" -> "ช่วงมุมบนวงกลม world"
-    # กว้าง 60° ต่อทิศ (กึ่งกลางเท่าเดิม)
-    _ARC_DEGS: dict[str, Tuple[float, float]] = {
-        # 4 ทิศหลัก (center: 45, 135, 225, 315)
-        "down":       (15.0,  75.0),   # world  45° -> จอ "ลง"
-        "left":       (95.0, 175.0),  # world 135° -> จอ "ซ้าย"
-        "up":         (195.0, 255.0),  # world 225° -> จอ "ขึ้น"
-        "right":      (275.0, 355.0),  # world 315° -> จอ "ขวา"
-
-        # 4 ทิศเฉียง (center: 0, 90, 180, 270) 
-        # ทำให้เอฟเฟ็กกว้างขึ้น ใส่ offset 10 ซ้ายลด 10 ขวาเพิ่ม 10
-        "down_right": (335.0,  25.0),  # world   0° -> จอ "ล่าง-ขวา"
-        "down_left":  ( 65.0, 125.0),  # world  90° -> จอ "ล่าง-ซ้าย"
-        "up_left":    (155.0, 205.0),  # world 180° -> จอ "บน-ซ้าย"
-        "up_right":   (245.0, 295.0),  # world 270° -> จอ "บน-ขวา"
+    # =========================
+    # Presets (ปรับได้)
+    # =========================
+    # ค่าเริ่มต้น (normal) = แบบปัจจุบันของคุณ
+    _DEFAULTS: Dict[str, Any] = {
+        "sweep_deg": 92.0,
+        "cross_offset_deg": 12.0,
+        "iso_sequence_deg": (20.0, 25.0),
+        "overlap_start_frame": 4,
+        "num_frames_per_hit": 10,
+        "frame_duration": 0.04,
+        "hit2_thickness_boost": 3,
     }
 
+    # โหมดเร็ว (Diablo-like): เร็ว/ลื่น/แฟลชมากขึ้น
+    # - เฟรมต่อ hit น้อยลง + frame_duration ต่ำลง
+    # - sweep กว้างขึ้นเล็กน้อย ให้รู้สึก "กวาดเร็ว"
+    # - overlap เร็วขึ้น ให้ X เกิดเร็ว
+    _DIABLO: Dict[str, Any] = {
+        "sweep_deg": 100.0,
+        "cross_offset_deg": 14.0,
+        "iso_sequence_deg": (22.0, 26.0),
+        "overlap_start_frame": 3,
+        "num_frames_per_hit": 8,
+        "frame_duration": 0.033,
+        "hit2_thickness_boost": 2,
+    }
 
-    _ISO_ANGLE_DEG: float = 25.0
-    _ISO_ANGLE_RAD: float = math.radians(_ISO_ANGLE_DEG)
-    _ISO_K: float = math.sin(_ISO_ANGLE_RAD)
+    # โหมดหนัก (Soulslike): หนัก/หน่วง/มีน้ำหนัก
+    # - เฟรมต่อ hit มากขึ้น + frame_duration สูงขึ้นเล็กน้อย
+    # - sweep แคบลง ให้รู้สึก "คมและตั้งใจ"
+    # - hit2 หนาขึ้นให้รู้สึกกระแทก
+    _SOULSLIKE: Dict[str, Any] = {
+        "sweep_deg": 86.0,
+        "cross_offset_deg": 10.0,
+        "iso_sequence_deg": (20.0, 25.0),
+        "overlap_start_frame": 5,
+        "num_frames_per_hit": 12,
+        "frame_duration": 0.045,
+        "hit2_thickness_boost": 5,
+    }
+
+    _STYLE_PRESETS: Dict[str, Dict[str, Any]] = {
+        "normal": _DEFAULTS,
+        "default": _DEFAULTS,
+        "fast": _DIABLO,
+        "diablo": _DIABLO,
+        "heavy": _SOULSLIKE,
+        "soulslike": _SOULSLIKE,
+        "souls": _SOULSLIKE,
+    }
+
+    # =========================
+    # Direction mapping (8 ทิศ)
+    # =========================
+    _DIR_VEC: dict[str, Tuple[float, float]] = {
+        "up": (0.0, -1.0),
+        "down": (0.0, 1.0),
+        "left": (-1.0, 0.0),
+        "right": (1.0, 0.0),
+        "up_left": (-1.0, -1.0),
+        "up_right": (1.0, -1.0),
+        "down_left": (-1.0, 1.0),
+        "down_right": (1.0, 1.0),
+    }
 
     def __init__(
         self,
@@ -61,13 +100,60 @@ class SlashEffectNode(AnimatedNode):
         attack_rect: pygame.Rect,
         direction: str,
         *groups: pygame.sprite.AbstractGroup,
+        style: str = "normal",
+        # เผื่ออยาก override ทีละค่า (ไม่จำเป็นต้องใช้)
+        sweep_deg: float | None = None,
+        cross_offset_deg: float | None = None,
+        iso_sequence_deg: Tuple[float, float] | None = None,
+        overlap_start_frame: int | None = None,
+        num_frames_per_hit: int | None = None,
+        frame_duration: float | None = None,
+        hit2_thickness_boost: int | None = None,
     ) -> None:
         self.game = game
         self.attack_rect = attack_rect
         self.direction = self._normalize_direction(direction)
 
         # ----------------------------
-        # 1) หาจุดศูนย์กลาง (player)
+        # 0) เลือก preset ตาม style
+        # ----------------------------
+        style_key = (style or "normal").strip().lower()
+        preset = dict(self._STYLE_PRESETS.get(style_key, self._DEFAULTS))
+
+        # apply overrides (ถ้า user ส่งมา)
+        if sweep_deg is not None:
+            preset["sweep_deg"] = float(sweep_deg)
+        if cross_offset_deg is not None:
+            preset["cross_offset_deg"] = float(cross_offset_deg)
+        if iso_sequence_deg is not None:
+            preset["iso_sequence_deg"] = tuple(map(float, iso_sequence_deg))  # type: ignore
+        if overlap_start_frame is not None:
+            preset["overlap_start_frame"] = int(overlap_start_frame)
+        if num_frames_per_hit is not None:
+            preset["num_frames_per_hit"] = int(num_frames_per_hit)
+        if frame_duration is not None:
+            preset["frame_duration"] = float(frame_duration)
+        if hit2_thickness_boost is not None:
+            preset["hit2_thickness_boost"] = int(hit2_thickness_boost)
+
+        # clamp/guard
+        sweep_deg_v = float(preset["sweep_deg"])
+        sweep_deg_v = max(40.0, min(140.0, sweep_deg_v))
+
+        cross_deg_v = float(preset["cross_offset_deg"])
+        cross_deg_v = max(0.0, min(35.0, cross_deg_v))
+
+        iso_seq = preset["iso_sequence_deg"]
+        iso1 = float(iso_seq[0])
+        iso2 = float(iso_seq[1])
+
+        overlap_start = max(0, int(preset["overlap_start_frame"]))
+        num_frames = max(4, int(preset["num_frames_per_hit"]))
+        frame_dt = max(0.016, float(preset["frame_duration"]))  # >= 60fps step
+        thick2 = max(0, int(preset["hit2_thickness_boost"]))
+
+        # ----------------------------
+        # 1) center ของ effect = center ของ player (เดิม)
         # ----------------------------
         player = getattr(self.game, "player", None)
         if player is not None:
@@ -75,7 +161,7 @@ class SlashEffectNode(AnimatedNode):
         else:
             player_center = pygame.Vector2(attack_rect.center)
 
-        # ระยะจาก player → center ของ attack_rect สำหรับประมาณรัศมี
+        # ระยะจาก player → center ของ attack_rect (คงแนวเดิม)
         delta = pygame.Vector2(attack_rect.center) - player_center
         radius = delta.length()
         if radius <= 1:
@@ -83,135 +169,175 @@ class SlashEffectNode(AnimatedNode):
         radius = max(48.0, min(radius, 220.0))
 
         # ----------------------------
-        # 2) สร้างจุดของ "ส่วนโค้ง" ใน world space
+        # 2) หา base_angle จาก direction vector (หัวใจของความ “ธรรมชาติ”)
         # ----------------------------
-        start_deg, end_deg = self._get_arc_deg_for_direction(self.direction)
-        world_arc_points = self._build_arc_points(radius, start_deg, end_deg, segments=48)
+        dir_vec = self._direction_to_vector(self.direction)
+        base_angle = math.atan2(dir_vec.y, dir_vec.x)  # radians
 
         # ----------------------------
-        # 3) แปลงจุดเป็น isometric 25°
-        #    รอบ origin (0,0)
+        # 3) สร้าง arc 2 hit จากเวกเตอร์
         # ----------------------------
-        iso_arc_points = [self._iso_transform(x, y) for (x, y) in world_arc_points]
+        sweep_rad = math.radians(sweep_deg_v)
+        cross_rad = math.radians(cross_deg_v)
+
+        # hit1: clockwise (ตามเข็ม)
+        world_pts_1 = self._build_arc_from_angle(
+            radius=radius,
+            center_angle=base_angle + cross_rad,
+            sweep=sweep_rad,
+            segments=48,
+            clockwise=True,
+        )
+
+        # hit2: counterclockwise (ทวนเข็ม)
+        world_pts_2 = self._build_arc_from_angle(
+            radius=radius,
+            center_angle=base_angle - cross_rad,
+            sweep=sweep_rad,
+            segments=48,
+            clockwise=False,
+        )
 
         # ----------------------------
-        # 4) เลื่อนจุดให้มาอยู่บน surface (origin = center)
+        # 4) isometric transform ต่อ hit (stylize)
         # ----------------------------
-        surf_points, surf_size = self._to_surface_space(iso_arc_points, margin=16)
-        width, height = surf_size
+        iso_pts_1 = self._iso_transform_points(world_pts_1, iso1)
+        iso_pts_2 = self._iso_transform_points(world_pts_2, iso2)
+
+        # รวมเพื่อหา surface ขนาดเดียว
+        width, height = self._surface_size_for_sets([iso_pts_1, iso_pts_2], margin=24)
+
+        p1 = self._to_surface_space_fixed(iso_pts_1, width, height)
+        p2 = self._to_surface_space_fixed(iso_pts_2, width, height)
 
         # ----------------------------
-        # 5) สร้างชุดเฟรมสำหรับเอฟเฟ็กต์
+        # 5) สร้างเฟรมแต่ละ hit แล้วซ้อนทับ timeline เพื่อให้ X ชัด
         # ----------------------------
-        frames: List[pygame.Surface] = self._build_frames(surf_points, width, height)
+        hit1_frames = self._build_frames(
+            p1, width, height,
+            num_frames=num_frames,
+            seed_offset=0,
+            thickness_boost=0,
+        )
+        hit2_frames = self._build_frames(
+            p2, width, height,
+            num_frames=num_frames,
+            seed_offset=1000,
+            thickness_boost=thick2,
+        )
 
-        frame_duration = 0.04
-        self.life_time = frame_duration * len(frames)
+        total_frames = max(len(hit1_frames), overlap_start + len(hit2_frames))
 
-        # ✅ เรียก AnimatedNode ด้วยลำดับที่ถูกต้อง
-        #    (frames, frame_duration, loop, *groups)
-        super().__init__(frames, frame_duration, False, *groups)
+        frames: List[pygame.Surface] = []
+        for g in range(total_frames):
+            base = pygame.Surface((width, height), pygame.SRCALPHA)
 
-        # วาง center ของ effect ทับ player_center (world space)
+            if 0 <= g < len(hit1_frames):
+                base.blit(hit1_frames[g], (0, 0))
+
+            g2 = g - overlap_start
+            if 0 <= g2 < len(hit2_frames):
+                base.blit(hit2_frames[g2], (0, 0))
+
+            frames.append(base)
+
+        self.life_time = frame_dt * len(frames)
+        super().__init__(frames, frame_dt, False, *groups)
         self.rect = self.image.get_rect(center=player_center)
 
     # ============================================================
-    # Helper: ทิศ & มุม
+    # Direction helpers
     # ============================================================
     @classmethod
     def _normalize_direction(cls, direction: str) -> str:
-        direction = (direction or "").lower()
-        direction = direction.replace(" ", "_").replace("-", "_")
-        return direction
+        d = (direction or "").lower().replace(" ", "_").replace("-", "_")
+        aliases = {
+            "upright": "up_right",
+            "upleft": "up_left",
+            "downright": "down_right",
+            "downleft": "down_left",
+        }
+        return aliases.get(d, d)
 
     @classmethod
-    def _get_arc_deg_for_direction(cls, direction: str) -> Tuple[float, float]:
-        direction = cls._normalize_direction(direction)
-
-        if direction in cls._ARC_DEGS:
-            return cls._ARC_DEGS[direction]
-
-        # รองรับชื่อสะกดแปลก ๆ
-        if "up" in direction and "right" in direction:
-            return cls._ARC_DEGS["up_right"]
-        if "up" in direction and "left" in direction:
-            return cls._ARC_DEGS["up_left"]
-        if "down" in direction and "right" in direction:
-            return cls._ARC_DEGS["down_right"]
-        if "down" in direction and "left" in direction:
-            return cls._ARC_DEGS["down_left"]
-        if "up" in direction:
-            return cls._ARC_DEGS["up"]
-        if "down" in direction:
-            return cls._ARC_DEGS["down"]
-        if "left" in direction:
-            return cls._ARC_DEGS["left"]
-        if "right" in direction:
-            return cls._ARC_DEGS["right"]
-
-        # default: ฟันลงหน้าจอ
-        return cls._ARC_DEGS["down"]
+    def _direction_to_vector(cls, direction: str) -> pygame.Vector2:
+        d = cls._normalize_direction(direction)
+        vx, vy = cls._DIR_VEC.get(d, (0.0, 1.0))  # default down
+        v = pygame.Vector2(vx, vy)
+        if v.length_squared() == 0:
+            return pygame.Vector2(0, 1)
+        return v.normalize()
 
     # ============================================================
-    # Helper: สร้างเส้นโค้ง + isometric
+    # Arc builders (vector-based)
     # ============================================================
-    @classmethod
-    def _build_arc_points(
-        cls,
+    @staticmethod
+    def _build_arc_from_angle(
         radius: float,
-        start_deg: float,
-        end_deg: float,
+        center_angle: float,
+        sweep: float,
         segments: int = 48,
+        clockwise: bool = True,
     ) -> List[Tuple[float, float]]:
+        half = sweep * 0.5
         pts: List[Tuple[float, float]] = []
 
-        if end_deg < start_deg:
-            end_deg += 360.0
+        if clockwise:
+            a0 = center_angle + half
+            a1 = center_angle - half
+        else:
+            a0 = center_angle - half
+            a1 = center_angle + half
 
         for i in range(segments + 1):
-            a_deg = start_deg + (end_deg - start_deg) * i / segments
-            a_rad = math.radians(a_deg)
-            x = radius * math.cos(a_rad)
-            y = radius * math.sin(a_rad)
+            t = i / segments
+            a = a0 + (a1 - a0) * t
+            x = radius * math.cos(a)
+            y = radius * math.sin(a)
             pts.append((x, y))
 
         return pts
 
-    @classmethod
-    def _iso_transform(cls, x: float, y: float) -> Tuple[float, float]:
-        sx = x - y
-        sy = (x + y) * cls._ISO_K
-        return sx, sy
+    @staticmethod
+    def _iso_transform_points(world_pts: List[Tuple[float, float]], iso_deg: float) -> List[Tuple[float, float]]:
+        k = math.sin(math.radians(iso_deg))
+        return [(x - y, (x + y) * k) for (x, y) in world_pts]
 
     @staticmethod
-    def _to_surface_space(
-        iso_points: List[Tuple[float, float]],
-        margin: int = 16,
-    ) -> Tuple[List[Tuple[int, int]], Tuple[int, int]]:
-        if not iso_points:
-            surf = pygame.Surface((1, 1), pygame.SRCALPHA)
-            return [(0, 0)], (1, 1)
+    def _surface_size_for_sets(
+        sets: List[List[Tuple[float, float]]],
+        margin: int = 24,
+    ) -> Tuple[int, int]:
+        xs: List[float] = []
+        ys: List[float] = []
+        for pts in sets:
+            if not pts:
+                continue
+            xs.extend([p[0] for p in pts])
+            ys.extend([p[1] for p in pts])
 
-        xs = [p[0] for p in iso_points]
-        ys = [p[1] for p in iso_points]
+        if not xs or not ys:
+            return (1, 1)
 
         half_w = max(abs(min(xs)), abs(max(xs))) + margin
         half_h = max(abs(min(ys)), abs(max(ys))) + margin
+        return (max(1, int(half_w * 2)), max(1, int(half_h * 2)))
 
-        width = int(half_w * 2)
-        height = int(half_h * 2)
-
+    @staticmethod
+    def _to_surface_space_fixed(
+        iso_points: List[Tuple[float, float]],
+        width: int,
+        height: int,
+    ) -> List[Tuple[int, int]]:
+        if not iso_points:
+            return [(0, 0)]
         cx = width // 2
         cy = height // 2
+        return [(int(round(x + cx)), int(round(y + cy))) for (x, y) in iso_points]
 
-        surf_points: List[Tuple[int, int]] = []
-        for x, y in iso_points:
-            sx = int(round(x + cx))
-            sy = int(round(y + cy))
-            surf_points.append((sx, sy))
-
-        return surf_points, (width, height)
-
+    # ============================================================
+    # Visual (taper + bloom + spark)
+    # ============================================================
     @staticmethod
     def _ease_out_cubic(t: float) -> float:
         t = max(0.0, min(1.0, t))
@@ -221,17 +347,15 @@ class SlashEffectNode(AnimatedNode):
     def _lerp(a: float, b: float, t: float) -> float:
         return a + (b - a) * t
 
-    @staticmethod
-    def _clamp01(x: float) -> float:
-        return max(0.0, min(1.0, x))
-
     @classmethod
     def _build_frames(
         cls,
         arc_points: List[Tuple[int, int]],
         width: int,
         height: int,
-        num_frames: int = 10,   # เพิ่มความเนียน
+        num_frames: int = 10,
+        seed_offset: int = 0,
+        thickness_boost: int = 0,
     ) -> List[pygame.Surface]:
         if not arc_points or len(arc_points) < 2:
             return [pygame.Surface((width, height), pygame.SRCALPHA)]
@@ -239,33 +363,27 @@ class SlashEffectNode(AnimatedNode):
         frames: List[pygame.Surface] = []
         n = len(arc_points)
 
-        # สีหลัก (ปรับได้ตามธาตุ/อาวุธ)
-        core_rgb = (210, 255, 255)     # แกนสว่าง
-        glow_rgb = (0, 220, 255)       # ขอบเรือง
+        core_rgb = (210, 255, 255)
+        glow_rgb = (0, 220, 255)
 
         for fi in range(num_frames):
             t = fi / max(num_frames - 1, 1)
-            fade = 1.0 - cls._ease_out_cubic(t)  # จางแบบนุ่ม ๆ
+            fade = 1.0 - cls._ease_out_cubic(t)
 
             surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
-            # 1) วาด glow หนา ๆ ก่อน (หลาย pass ให้ดูนุ่ม)
-            #    trick: วาดกว้างแล้วทำ soft bloom ด้วย smoothscale
+            # Glow
             glow = pygame.Surface((width, height), pygame.SRCALPHA)
-
-            base_thick = int(cls._lerp(18, 6, t))  # เริ่มหนา → บาง
+            base_thick = int(cls._lerp(18, 6, t)) + thickness_boost
             glow_alpha = int(110 * fade)
 
             for k in range(n - 1):
-                u = k / max(n - 2, 1)          # 0..1 ไปตามความยาว arc
-                # taper: หัวหนากว่า หางบางกว่า
+                u = k / max(n - 2, 1)
                 w = max(2, int(base_thick * (1.0 - 0.65 * u)))
-                a = int(glow_alpha * (1.0 - 0.35 * u))  # หัวชัดกว่า
+                a = int(glow_alpha * (1.0 - 0.35 * u))
+                pygame.draw.line(glow, (*glow_rgb, a), arc_points[k], arc_points[k + 1], w)
 
-                col = (*glow_rgb, a)
-                pygame.draw.line(glow, col, arc_points[k], arc_points[k + 1], w)
-
-            # bloom (ขยายแล้วหด) ให้ขอบฟุ้งแบบ “แพง”
+            # Bloom
             bloom_scale = 1.08
             bw = max(1, int(width * bloom_scale))
             bh = max(1, int(height * bloom_scale))
@@ -273,34 +391,32 @@ class SlashEffectNode(AnimatedNode):
             glow_soft = pygame.transform.smoothscale(glow_big, (width, height))
             surf.blit(glow_soft, (0, 0))
 
-            # 2) วาด core (คม) ซ้อนทับ
-            core_thick = int(cls._lerp(8, 2, t))
+            # Core
+            core_thick = int(cls._lerp(8, 2, t)) + max(0, thickness_boost // 2)
             core_alpha = int(220 * fade)
 
             for k in range(n - 1):
                 u = k / max(n - 2, 1)
                 w = max(1, int(core_thick * (1.0 - 0.75 * u)))
                 a = int(core_alpha * (1.0 - 0.45 * u))
-                col = (*core_rgb, a)
-                pygame.draw.line(surf, col, arc_points[k], arc_points[k + 1], w)
+                pygame.draw.line(surf, (*core_rgb, a), arc_points[k], arc_points[k + 1], w)
 
-            # 3) spark เล็ก ๆ ตามแนว arc (สุ่มแบบ deterministic ต่อเฟรม)
-            rng = random.Random(1337 + fi * 97)
-            spark_count = 10
+            # Spark
+            rng = random.Random(1337 + seed_offset + fi * 97)
+            spark_count = 12 if thickness_boost else 10
+            spread = 7 if thickness_boost else 6
             for _ in range(spark_count):
                 idx = rng.randint(0, n - 1)
                 px, py = arc_points[idx]
-                # กระจายเล็กน้อยรอบเส้น
-                ox = rng.randint(-6, 6)
-                oy = rng.randint(-6, 6)
+                ox = rng.randint(-spread, spread)
+                oy = rng.randint(-spread, spread)
                 r = rng.randint(1, 3)
-                a = int(rng.randint(90, 170) * fade)
+                a = int(rng.randint(90, 180) * fade)
                 pygame.draw.circle(surf, (255, 255, 255, a), (px + ox, py + oy), r)
 
             frames.append(surf)
 
         return frames
-
 
     # ============================================================
     # Update
@@ -310,5 +426,4 @@ class SlashEffectNode(AnimatedNode):
         if self.life_time <= 0:
             self.kill()
             return
-
         super().update(dt)

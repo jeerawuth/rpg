@@ -460,36 +460,36 @@
   ],
 
   "enemy_spawns": [
-    { "type": "slime_green", "pos": [656, 975], "spawn_time": 0 },
-    { "type": "slime_green", "pos": [856, 875], "spawn_time": 10 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 10 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 15 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 20 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 20 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 25 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 25 }
+    { "type": "slime_green", "pos": [656, 975], "spawn_time": 10 },
+    { "type": "slime_green", "pos": [856, 875], "spawn_time": 30 },
+    { "type": "slime_green", "pos": [656, 675], "spawn_time": 30 },
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 35 },
+    { "type": "slime_green", "pos": [656, 675], "spawn_time": 30 },
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 30 },
+    { "type": "slime_green", "pos": [656, 675], "spawn_time": 35 },
+    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 35 }
   ],
 
   "item_spawns": [
     {
       "item_id": "sword_all_direction",
       "pos": [1076, 376], 
-      "amount": 1
+      "amount": 2
     },
     {
       "item_id": "sword_all_direction",
       "pos": [1276, 456], 
-      "amount": 1
+      "amount": 2
     },
     {
       "item_id": "sword_all_direction_2",
       "pos": [956, 876], 
-      "amount": 1
+      "amount": 2
     },
     {
       "item_id": "sword_all_direction_2",
       "pos": [1556, 1246], 
-      "amount": 1
+      "amount": 2
     }
   ],
   "decor_spawns": [
