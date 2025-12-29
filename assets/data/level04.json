@@ -391,7 +391,7 @@
   ],
   "item_spawns": [
     {
-      "item_id": "potion_small",
+      "item_id": "magic_lightning_2",
       "pos": [1260, 652], 
       "amount": 1,
       "spawn_time": 0 

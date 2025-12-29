@@ -463,23 +463,25 @@
     { "type": "slime_green", "pos": [656, 975], "spawn_time": 0 },
     { "type": "slime_green", "pos": [856, 875], "spawn_time": 10 },
     { "type": "slime_green", "pos": [656, 675], "spawn_time": 10 },
+    { "type": "slime_green", "pos": [756, 775], "spawn_time": 10 },
     { "type": "boss_orc", "pos": [956, 975], "spawn_time": 15 },
     { "type": "slime_green", "pos": [656, 675], "spawn_time": 20 },
     { "type": "boss_orc", "pos": [956, 975], "spawn_time": 20 },
     { "type": "slime_green", "pos": [656, 675], "spawn_time": 25 },
+    { "type": "slime_green", "pos": [636, 675], "spawn_time": 25 },
     { "type": "boss_orc", "pos": [956, 975], "spawn_time": 25 }
   ],
 
   "item_spawns": [
     {
-      "item_id": "magic_lightning",
+      "item_id": "bow_power_1",
       "pos": [1076, 376], 
-      "amount": 3
+      "amount": 1
     },
     {
-      "item_id": "magic_lightning_2",
+      "item_id": "bow_power_2",
       "pos": [1276, 456], 
-      "amount": 3
+      "amount": 1
     },
     {
       "item_id": "shield_1",

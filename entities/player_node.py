@@ -18,8 +18,6 @@ from entities.sword_slash_arc_node import SwordSlashArcNode
 # สายฟ้า
 from entities.lightning_effect_node import LightningEffectNode
 
-
-
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
 try:
     from items.inventory import Inventory
@@ -1244,16 +1242,23 @@ class PlayerNode(AnimatedNode):
             scaling_attack=0.8,
         )
 
+        trail_theme = None
+        if weapon and weapon.id == "bow_power_1":
+            trail_theme = "plasma"   # หรือ "crimson" / "arcane" / "holy"
+        elif weapon and weapon.id == "bow_power_2":
+            trail_theme = "arcane"
+
         ProjectileNode(
             self,
             self.rect.center,
             direction,
             450,
             packet,
-            projectile_id,   # เลือกว่าจะแสดงอาวุธแบบใด
+            projectile_id,
             1.5,
             self.projectile_group,
             self.game.all_sprites,
+            trail_theme=trail_theme,   # ✅ เพิ่มบรรทัดนี้
         )
 
         # ให้ตัวละครเล่นท่า "โจมตี" ช่วงสั้น ๆ (เอาไว้เลือกเฟรม attack_arrow)

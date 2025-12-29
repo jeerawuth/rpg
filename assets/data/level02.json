@@ -342,8 +342,12 @@
   "enemy_spawns": [
     { "type": "slime_green", "pos": [456, 775], "spawn_time": 0 },
     { "type": "slime_green", "pos": [556, 875], "spawn_time": 0 },
-    { "type": "goblin", "pos": [456, 675], "spawn_time": 10 },
-    { "type": "goblin", "pos": [356, 575], "spawn_time": 10 }
+    { "type": "slime_green", "pos": [456, 775], "spawn_time": 5 },
+    { "type": "slime_green", "pos": [556, 875], "spawn_time": 10 },
+    { "type": "goblin", "pos": [456, 675], "spawn_time": 15 },
+    { "type": "goblin", "pos": [356, 575], "spawn_time": 15 },
+    { "type": "boss_orc", "pos": [556, 875], "spawn_time": 20 },
+    { "type": "boss_orc", "pos": [356, 675], "spawn_time": 20 }
   ],
 
   "item_spawns": [
@@ -360,6 +364,11 @@
     {
       "item_id": "sword_all_direction",
       "pos": [956, 776], 
+      "amount": 1
+    },
+    {
+      "item_id": "sword_all_direction_2",
+      "pos": [856, 676], 
       "amount": 1
     }
   ],

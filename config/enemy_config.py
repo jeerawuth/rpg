@@ -6,8 +6,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "goblin": {
         "sprite_id": "goblin",
         "stats": Stats(
-            max_hp=160,
-            hp=100,
+            max_hp=40,
+            hp=40,
             attack=10,
             magic=0,
             armor=3,
@@ -23,8 +23,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "slime_green": {
         "sprite_id": "slime_green",
         "stats": Stats(
-            max_hp=60,
-            hp=60,
+            max_hp=50,
+            hp=50,
             attack=10,
             magic=0,
             armor=3,
@@ -40,8 +40,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "orc": {
         "sprite_id": "orc",
         "stats": Stats(
-            max_hp=120,
-            hp=100,
+            max_hp=60,
+            hp=60,
             attack=15,
             magic=0,
             armor=3,
@@ -57,8 +57,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "boss_orc": {
         "sprite_id": "boss_orc",
         "stats": Stats(
-            max_hp=250,
-            hp=300,
+            max_hp=80,
+            hp=80,
             attack=35,
             magic=0,
             armor=3,
@@ -74,8 +74,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "troll": {
         "sprite_id": "troll",
         "stats": Stats(
-            max_hp=250,
-            hp=250,
+            max_hp=90,
+            hp=90,
             attack=40,
             magic=0,
             armor=3,
@@ -91,8 +91,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "undead": {
         "sprite_id": "undead",
         "stats": Stats(
-            max_hp=350,
-            hp=350,
+            max_hp=300,
+            hp=300,
             attack=40,
             magic=0,
             armor=3,
