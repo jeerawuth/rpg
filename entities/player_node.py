@@ -1198,7 +1198,7 @@ class PlayerNode(AnimatedNode):
         packet = DamagePacket(base=float(base_damage), damage_type="magic", scaling_attack=0.0)
 
         for e in targets:
-            LightningEffectNode(self.rect.center, e.rect.center, self.game.all_sprites)
+            LightningEffectNode(self.rect.center, e.rect.center, self.game.all_sprites, theme="plasma")
             e.take_hit(self.stats, packet)
 
             if hasattr(e, "hurt_timer"):
