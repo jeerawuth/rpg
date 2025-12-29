@@ -1252,7 +1252,7 @@ class PlayerNode(AnimatedNode):
             self,
             self.rect.center,
             direction,
-            450,
+            650,
             packet,
             projectile_id,
             1.5,
