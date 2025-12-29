@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple
 import math
 import pygame
+import random
 
 from .animated_node import AnimatedNode
 
@@ -37,9 +38,9 @@ class SlashEffectNode(AnimatedNode):
     _ARC_DEGS: dict[str, Tuple[float, float]] = {
         # 4 ทิศหลัก (center: 45, 135, 225, 315)
         "down":       (15.0,  75.0),   # world  45° -> จอ "ลง"
-        "left":       (105.0, 165.0),  # world 135° -> จอ "ซ้าย"
+        "left":       (95.0, 175.0),  # world 135° -> จอ "ซ้าย"
         "up":         (195.0, 255.0),  # world 225° -> จอ "ขึ้น"
-        "right":      (285.0, 345.0),  # world 315° -> จอ "ขวา"
+        "right":      (275.0, 355.0),  # world 315° -> จอ "ขวา"
 
         # 4 ทิศเฉียง (center: 0, 90, 180, 270) 
         # ทำให้เอฟเฟ็กกว้างขึ้น ใส่ offset 10 ซ้ายลด 10 ขวาเพิ่ม 10
@@ -212,35 +213,94 @@ class SlashEffectNode(AnimatedNode):
         return surf_points, (width, height)
 
     @staticmethod
+    def _ease_out_cubic(t: float) -> float:
+        t = max(0.0, min(1.0, t))
+        return 1.0 - (1.0 - t) ** 3
+
+    @staticmethod
+    def _lerp(a: float, b: float, t: float) -> float:
+        return a + (b - a) * t
+
+    @staticmethod
+    def _clamp01(x: float) -> float:
+        return max(0.0, min(1.0, x))
+
+    @classmethod
     def _build_frames(
+        cls,
         arc_points: List[Tuple[int, int]],
         width: int,
         height: int,
-        num_frames: int = 6,
+        num_frames: int = 10,   # เพิ่มความเนียน
     ) -> List[pygame.Surface]:
-        if not arc_points:
-            surf = pygame.Surface((width, height), pygame.SRCALPHA)
-            return [surf]
+        if not arc_points or len(arc_points) < 2:
+            return [pygame.Surface((width, height), pygame.SRCALPHA)]
 
         frames: List[pygame.Surface] = []
+        n = len(arc_points)
 
-        for i in range(num_frames):
-            t = i / max(num_frames - 1, 1)
+        # สีหลัก (ปรับได้ตามธาตุ/อาวุธ)
+        core_rgb = (210, 255, 255)     # แกนสว่าง
+        glow_rgb = (0, 220, 255)       # ขอบเรือง
 
-            base_width = max(2, int(10 * (1.0 - t)))
-            inner_width = max(1, base_width // 2)
+        for fi in range(num_frames):
+            t = fi / max(num_frames - 1, 1)
+            fade = 1.0 - cls._ease_out_cubic(t)  # จางแบบนุ่ม ๆ
 
-            glow_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+            surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
-            outer_color = (0, 255, 255, int(80 * (1.0 - t)))
-            pygame.draw.lines(glow_surface, outer_color, False, arc_points, base_width)
+            # 1) วาด glow หนา ๆ ก่อน (หลาย pass ให้ดูนุ่ม)
+            #    trick: วาดกว้างแล้วทำ soft bloom ด้วย smoothscale
+            glow = pygame.Surface((width, height), pygame.SRCALPHA)
 
-            inner_color = (180, 255, 255, int(200 * (1.0 - t)))
-            pygame.draw.lines(glow_surface, inner_color, False, arc_points, inner_width)
+            base_thick = int(cls._lerp(18, 6, t))  # เริ่มหนา → บาง
+            glow_alpha = int(110 * fade)
 
-            frames.append(glow_surface)
+            for k in range(n - 1):
+                u = k / max(n - 2, 1)          # 0..1 ไปตามความยาว arc
+                # taper: หัวหนากว่า หางบางกว่า
+                w = max(2, int(base_thick * (1.0 - 0.65 * u)))
+                a = int(glow_alpha * (1.0 - 0.35 * u))  # หัวชัดกว่า
+
+                col = (*glow_rgb, a)
+                pygame.draw.line(glow, col, arc_points[k], arc_points[k + 1], w)
+
+            # bloom (ขยายแล้วหด) ให้ขอบฟุ้งแบบ “แพง”
+            bloom_scale = 1.08
+            bw = max(1, int(width * bloom_scale))
+            bh = max(1, int(height * bloom_scale))
+            glow_big = pygame.transform.smoothscale(glow, (bw, bh))
+            glow_soft = pygame.transform.smoothscale(glow_big, (width, height))
+            surf.blit(glow_soft, (0, 0))
+
+            # 2) วาด core (คม) ซ้อนทับ
+            core_thick = int(cls._lerp(8, 2, t))
+            core_alpha = int(220 * fade)
+
+            for k in range(n - 1):
+                u = k / max(n - 2, 1)
+                w = max(1, int(core_thick * (1.0 - 0.75 * u)))
+                a = int(core_alpha * (1.0 - 0.45 * u))
+                col = (*core_rgb, a)
+                pygame.draw.line(surf, col, arc_points[k], arc_points[k + 1], w)
+
+            # 3) spark เล็ก ๆ ตามแนว arc (สุ่มแบบ deterministic ต่อเฟรม)
+            rng = random.Random(1337 + fi * 97)
+            spark_count = 10
+            for _ in range(spark_count):
+                idx = rng.randint(0, n - 1)
+                px, py = arc_points[idx]
+                # กระจายเล็กน้อยรอบเส้น
+                ox = rng.randint(-6, 6)
+                oy = rng.randint(-6, 6)
+                r = rng.randint(1, 3)
+                a = int(rng.randint(90, 170) * fade)
+                pygame.draw.circle(surf, (255, 255, 255, a), (px + ox, py + oy), r)
+
+            frames.append(surf)
 
         return frames
+
 
     # ============================================================
     # Update
