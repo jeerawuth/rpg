@@ -344,6 +344,11 @@
       "spawn_time": 0 
     },
     {
+      "type": "slime_green",
+      "pos": [1284, 520],
+      "spawn_time": 0 
+    },
+    {
       "type": "goblin",
       "pos": [1204, 520],
       "spawn_time": 15 
@@ -360,7 +365,17 @@
     },
     {
       "type": "goblin",
+      "pos": [1150, 640],
+      "spawn_time": 20 
+    },
+    {
+      "type": "goblin",
       "pos": [1100, 650],
+      "spawn_time": 20 
+    },
+    {
+      "type": "goblin",
+      "pos": [1000, 660],
       "spawn_time": 20 
     },
     {
