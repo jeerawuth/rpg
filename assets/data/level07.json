@@ -526,6 +526,11 @@
       "type": "boss_orc",
       "pos": [866, 650],
       "spawn_time": 20 
+    },
+    {
+      "type": "troll",
+      "pos": [846, 640],
+      "spawn_time": 25
     }
   ],
   "item_spawns": [
