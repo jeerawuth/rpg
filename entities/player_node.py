@@ -798,8 +798,24 @@ class PlayerNode(AnimatedNode):
                     self.direction = "down" if y >= 0 else "up"
 
         # ---------- เลือก state ตาม priority ----------
-        # 1) dead
-        if getattr(self, "is_dead", False) and ("dead", self.direction) in self.animations:
+        # 1) dead (ตายต้องเข้า state dead เสมอ และ fallback ทิศให้มีเฟรม)
+        if getattr(self, "is_dead", False):
+            # ถ้าเป็นทิศทแยง แต่ไม่มี dead ของทิศนั้น -> fallback เป็นทิศหลัก
+            diag_to_cardinal = {
+                "up_left": "up",
+                "up_right": "up",
+                "down_left": "down",
+                "down_right": "down",
+            }
+            if ("dead", self.direction) not in self.animations:
+                if self.direction in diag_to_cardinal and ("dead", diag_to_cardinal[self.direction]) in self.animations:
+                    self.direction = diag_to_cardinal[self.direction]
+                else:
+                    for d in ("down", "left", "right", "up"):
+                        if ("dead", d) in self.animations:
+                            self.direction = d
+                            break
+
             self.state = "dead"
             return
 
@@ -1305,8 +1321,20 @@ class PlayerNode(AnimatedNode):
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
 
-        # คำนวณดาเมจ + หัก HP จริง
+        # คำนวณดาเมจ
+        hp_before = float(self.stats.hp)
         result = compute_damage(attacker_stats, self.stats, damage_packet)
+
+        # ถ้า compute_damage ไม่ได้หัก HP ให้หักเอง (กันกรณีระบบดาเมจเป็น pure function)
+        if abs(float(self.stats.hp) - hp_before) < 1e-6:
+            self.stats.hp = max(0.0, hp_before - float(getattr(result, 'final_damage', 0.0)))
+
+        # killed ที่เชื่อถือได้
+        killed_now = bool(getattr(result, 'killed', False)) or self.stats.hp <= 0
+        try:
+            result.killed = killed_now
+        except Exception:
+            pass
 
         print(
             f"[Player] took {result.final_damage} dmg "
@@ -1318,7 +1346,7 @@ class PlayerNode(AnimatedNode):
         if hasattr(self, "sfx_hit"):
             self.sfx_hit.play()
 
-        if result.killed:
+        if killed_now:
             print("[Player] died")
             self.is_dead = True
             self.death_anim_started = True
