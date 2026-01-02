@@ -484,6 +484,11 @@
       "amount": 1
     },
     {
+      "item_id": "sword_all_direction",
+      "pos": [1376, 556], 
+      "amount": 1
+    },
+    {
       "item_id": "shield_1",
       "pos": [956, 876], 
       "amount": 1
