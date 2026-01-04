@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import pygame
+import sys
 from typing import Callable, Optional
 
 from .base_scene import BaseScene
@@ -14,6 +15,58 @@ from entities.born_effect_node import BornEffectNode
 from entities.slash_effect_node import SlashEffectNode
 from entities.sword_slash_arc_node import SwordSlashArcNode
 
+
+
+def _make_system_font(size: int, *, bold: bool = False, italic: bool = False) -> pygame.font.Font:
+    """Create a Thai-capable system font with cross-platform fallbacks.
+
+    We avoid bundling font files in preload. This tries well-known Thai fonts
+    on Windows/macOS, then falls back to pygame's default font if none found.
+    """
+    # Ensure font module is ready (safe to call multiple times)
+    if not pygame.font.get_init():
+        pygame.font.init()
+
+    if sys.platform == "darwin":  # macOS
+        candidates = [
+            "Thonburi",
+            "Ayuthaya",
+            "Sukhumvit Set",
+            "Arial Unicode MS",
+            "Helvetica",
+            "Arial",
+        ]
+    elif sys.platform.startswith("win"):  # Windows
+        candidates = [
+            "Leelawadee UI",
+            "Tahoma",
+            "Segoe UI",
+            "Arial Unicode MS",
+            "Arial",
+        ]
+    else:  # Linux/others
+        candidates = [
+            "Noto Sans Thai",
+            "Noto Sans",
+            "DejaVu Sans",
+            "FreeSans",
+            "Arial",
+        ]
+
+    # Use match_font so we can reliably know when a font exists on the system.
+    font_path = None
+    for name in candidates:
+        try:
+            font_path = pygame.font.match_font(name)
+        except Exception:
+            font_path = None
+        if font_path:
+            break
+
+    f = pygame.font.Font(font_path, size) if font_path else pygame.font.Font(None, size)
+    f.set_bold(bold)
+    f.set_italic(italic)
+    return f
 
 class PreloadScene(BaseScene):
     """
@@ -48,8 +101,8 @@ class PreloadScene(BaseScene):
         self._status = "Preparing..."
 
         # ใช้ฟอนต์ระบบ (ไม่ไปโหลดไฟล์ font เพิ่มในช่วง preload)
-        self._title_font = pygame.font.Font(None, 42)
-        self._font = pygame.font.Font(None, 22)
+        self._title_font = _make_system_font(42, bold=True)
+        self._font = _make_system_font(22)
 
         # กัน user คิดว่าค้าง: หมุนสัญลักษณ์เล็ก ๆ
         self._spin_t = 0.0

@@ -30,7 +30,7 @@ class MainMenuScene(BaseScene):
                             next_scene_factory=lambda: GameScene(self.game),
                             items_per_frame=2,
                             title="Loading...",
-                            note="กำลังเตรียมทรัพยากรครั้งแรก (macOS อาจช้าเล็กน้อย)",
+                            note="กำลังเตรียมทรัพยากรครั้งแรก",
                         )
                     )
                 elif event.key == pygame.K_o:
