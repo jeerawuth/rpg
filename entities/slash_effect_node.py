@@ -80,6 +80,50 @@ class SlashEffectNode(AnimatedNode):
         "souls": _SOULSLIKE,
     }
 
+
+    # =========================
+    # Precomputed frame cache (แก้กระตุกตอนฟัน)
+    # =========================
+    # SlashEffectNode มีการ "วาดเส้น + smoothscale + สร้างเฟรม" ตอน __init__ ซึ่งหนักมาก
+    # โดยเฉพาะอาวุธที่ฟันรอบทิศทางจะสร้าง 8 โหนดพร้อมกัน (ดูที่ player_node.py)
+    # เลยทำ cache เฟรมไว้ตาม (style, direction, radius_bucket, preset หลัก ๆ) แล้ว reuse ในครั้งถัดไป
+    _FRAME_CACHE: Dict[tuple, tuple[List[pygame.Surface], float]] = {}
+    _FRAME_CACHE_LIMIT: int = 96
+
+    @classmethod
+    def _cache_key(
+        cls,
+        *,
+        style_key: str,
+        direction: str,
+        radius: float,
+        sweep_deg_v: float,
+        cross_deg_v: float,
+        iso1: float,
+        iso2: float,
+        num_frames: int,
+        overlap_start: int,
+        thick2: int,
+    core_rgb: Tuple[int, int, int],
+    glow_rgb: Tuple[int, int, int],
+    ) -> tuple:
+        # bucket radius เพื่อให้ reuse ได้แม้ตัวเลขเล็กน้อยต่างกัน (ลด cache แตก)
+        rb = int(round(radius / 8.0) * 8)
+        return (
+            style_key,
+            direction,
+            rb,
+            int(round(sweep_deg_v * 10)),
+            int(round(cross_deg_v * 10)),
+            int(round(iso1 * 10)),
+            int(round(iso2 * 10)),
+            int(num_frames),
+            int(overlap_start),
+            int(thick2),
+        int(core_rgb[0]), int(core_rgb[1]), int(core_rgb[2]),
+        int(glow_rgb[0]), int(glow_rgb[1]), int(glow_rgb[2]),
+        )
+
     # =========================
     # Direction mapping (8 ทิศ)
     # =========================
@@ -101,6 +145,7 @@ class SlashEffectNode(AnimatedNode):
         direction: str,
         *groups: pygame.sprite.AbstractGroup,
         style: str = "normal",
+        theme: Dict[str, Tuple[int, int, int]] | None = None,
         # เผื่ออยาก override ทีละค่า (ไม่จำเป็นต้องใช้)
         sweep_deg: float | None = None,
         cross_offset_deg: float | None = None,
@@ -118,6 +163,19 @@ class SlashEffectNode(AnimatedNode):
         # 0) เลือก preset ตาม style
         # ----------------------------
         style_key = (style or "normal").strip().lower()
+
+        # ----------------------------
+        # 0.5) Theme colors (ปรับโทนสีได้จากฝั่ง caller เช่น PlayerNode)
+        #  - ส่ง theme เป็น dict เช่น {"core_rgb": (210,255,255), "glow_rgb": (0,220,255)}
+        # ----------------------------
+        core_rgb = (210, 255, 255)
+        glow_rgb = (0, 220, 255)
+        if isinstance(theme, dict):
+            core_rgb = tuple(theme.get("core_rgb", core_rgb))  # type: ignore[assignment]
+            glow_rgb = tuple(theme.get("glow_rgb", glow_rgb))  # type: ignore[assignment]
+        core_rgb = tuple(max(0, min(255, int(v))) for v in core_rgb)  # type: ignore[misc]
+        glow_rgb = tuple(max(0, min(255, int(v))) for v in glow_rgb)  # type: ignore[misc]
+
         preset = dict(self._STYLE_PRESETS.get(style_key, self._DEFAULTS))
 
         # apply overrides (ถ้า user ส่งมา)
@@ -168,7 +226,37 @@ class SlashEffectNode(AnimatedNode):
             radius = 64.0
         radius = max(48.0, min(radius, 220.0))
 
+        
         # ----------------------------
+        # Cache: ถ้าผ่านมาครั้งหนึ่งแล้ว จะ reuse เฟรมเดิมทันที (ลดอาการกระตุกมาก)
+        # ----------------------------
+        cache_key = self._cache_key(
+            style_key=style_key,
+            direction=self.direction,
+            radius=radius,
+            sweep_deg_v=sweep_deg_v,
+            cross_deg_v=cross_deg_v,
+            iso1=iso1,
+            iso2=iso2,
+            num_frames=num_frames,
+            overlap_start=overlap_start,
+            thick2=thick2,
+        core_rgb=core_rgb,
+        glow_rgb=glow_rgb,
+        )
+        cached = self._FRAME_CACHE.get(cache_key)
+        if cached is not None:
+            frames, cached_dt = cached
+            # IMPORTANT: เฟรมใน cache ต้องถือว่าเป็น 'แม่แบบ' ห้ามแก้ไขใน place
+            # AnimatedNode/เอฟเฟ็กต์บางตัวอาจทำ set_alpha / draw ทับบน self.image
+            # ถ้าใช้เฟรมจาก cache ตรง ๆ จะทำให้ 'ครั้งแรก' กับ 'ครั้งถัดไป' หน้าตาไม่เหมือนกัน
+            frames = [f.copy() for f in frames]
+            self.life_time = cached_dt * len(frames)
+            super().__init__(frames, cached_dt, False, *groups)
+            self.rect = self.image.get_rect(center=player_center)
+            return
+
+# ----------------------------
         # 2) หา base_angle จาก direction vector (หัวใจของความ “ธรรมชาติ”)
         # ----------------------------
         dir_vec = self._direction_to_vector(self.direction)
@@ -218,12 +306,16 @@ class SlashEffectNode(AnimatedNode):
             num_frames=num_frames,
             seed_offset=0,
             thickness_boost=0,
+        core_rgb=core_rgb,
+        glow_rgb=glow_rgb,
         )
         hit2_frames = self._build_frames(
             p2, width, height,
             num_frames=num_frames,
             seed_offset=1000,
             thickness_boost=thick2,
+        core_rgb=core_rgb,
+        glow_rgb=glow_rgb,
         )
 
         total_frames = max(len(hit1_frames), overlap_start + len(hit2_frames))
@@ -240,6 +332,13 @@ class SlashEffectNode(AnimatedNode):
                 base.blit(hit2_frames[g2], (0, 0))
 
             frames.append(base)
+
+        # ----------------------------
+        # Cache store (จำกัดจำนวนเพื่อไม่กินแรมไม่จำเป็น)
+        # ----------------------------
+        if len(self._FRAME_CACHE) >= self._FRAME_CACHE_LIMIT:
+            self._FRAME_CACHE.pop(next(iter(self._FRAME_CACHE)))
+        self._FRAME_CACHE[cache_key] = ([f.copy() for f in frames], frame_dt)  # keep cache pristine
 
         self.life_time = frame_dt * len(frames)
         super().__init__(frames, frame_dt, False, *groups)
@@ -356,6 +455,8 @@ class SlashEffectNode(AnimatedNode):
         num_frames: int = 10,
         seed_offset: int = 0,
         thickness_boost: int = 0,
+    core_rgb: Tuple[int, int, int] = (210, 255, 255),
+    glow_rgb: Tuple[int, int, int] = (0, 220, 255),
     ) -> List[pygame.Surface]:
         if not arc_points or len(arc_points) < 2:
             return [pygame.Surface((width, height), pygame.SRCALPHA)]
@@ -363,8 +464,6 @@ class SlashEffectNode(AnimatedNode):
         frames: List[pygame.Surface] = []
         n = len(arc_points)
 
-        core_rgb = (210, 255, 255)
-        glow_rgb = (0, 220, 255)
 
         for fi in range(num_frames):
             t = fi / max(num_frames - 1, 1)

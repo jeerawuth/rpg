@@ -17,12 +17,22 @@ class MainMenuScene(BaseScene):
 
     def handle_events(self, events) -> None:
         from .game_scene import GameScene  # import ภายในกันวงกลม
+        from .preload_scene import PreloadScene
 
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
-                    # start game
-                    self.game.scene_manager.set_scene(GameScene(self.game))
+                    # start game (รอบแรกจะโหลด asset เยอะ ให้ผ่านหน้าโหลดก่อน)
+                    self.game.scene_manager.set_scene(
+                        PreloadScene(
+                            self.game,
+                            level_id="level01",
+                            next_scene_factory=lambda: GameScene(self.game),
+                            items_per_frame=2,
+                            title="Loading...",
+                            note="กำลังเตรียมทรัพยากรครั้งแรก (macOS อาจช้าเล็กน้อย)",
+                        )
+                    )
                 elif event.key == pygame.K_o:
                     from .options_scene import OptionsScene
                     self.game.scene_manager.push_scene(OptionsScene(self.game))

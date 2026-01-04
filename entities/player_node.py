@@ -18,6 +18,51 @@ from entities.sword_slash_arc_node import SwordSlashArcNode
 # สายฟ้า
 from entities.lightning_effect_node import LightningEffectNode
 
+
+# ------------------------------------------------------------
+# Sword slash color presets (inspired by lightning_effect_node.py)
+# ใช้กับ weapon_id: "sword_all_direction" / "sword_all_direction_2"
+#
+# รูปแบบ:
+#   core_rgb        = สีเส้นคม ๆ (ด้านใน)
+#   glow_rgb        = สีเรืองแสง (ด้านนอก)
+#   sword_tint_rgb  = (optional) สี tint ของรูปดาบ sword_slash.png
+# ------------------------------------------------------------
+SWORD_SLASH_THEMES: dict[str, dict[str, tuple[int, int, int]]] = {
+    # ค่าเริ่มต้น “ฟ้า” แบบเดิมของดาบ (ใกล้เคียงกับโทนในโปรเจกต์เดิม)
+    "blue": {
+        "core_rgb": (210, 255, 255),
+        "glow_rgb": (0, 220, 255),
+        "sword_tint_rgb": (0, 220, 255),
+    },
+
+    # ธีมชุดเดียวกับ lightning_effect_node.py (แปลง RGBA -> RGB)
+    # แนว “AAA/Arcane” : cyan + violet fringe
+    "arcane": {
+        "core_rgb": (190, 245, 255),     # จาก glow_near
+        "glow_rgb": (120, 230, 255),     # จาก bolt_main
+        "sword_tint_rgb": (120, 230, 255),
+    },
+    # แนว “Storm” : teal/cyan แต่ดุดันขึ้น
+    "storm": {
+        "core_rgb": (180, 255, 255),     # จาก glow_near
+        "glow_rgb": (70, 255, 255),      # จาก bolt_main
+        "sword_tint_rgb": (70, 255, 255),
+    },
+    # แนว “Holy/Gold” : สายฟ้าศักดิ์สิทธิ์ โทนทอง
+    "holy": {
+        "core_rgb": (255, 245, 165),     # จาก glow_near
+        "glow_rgb": (255, 245, 185),     # จาก bolt_main
+        "sword_tint_rgb": (255, 215, 85),# จาก glow_mid (ทองเข้ม)
+    },
+    # แนว “Plasma” : ม่วงชมพูแรง ๆ
+    "plasma": {
+        "core_rgb": (255, 200, 255),     # จาก glow_near
+        "glow_rgb": (230, 160, 255),     # จาก bolt_main
+        "sword_tint_rgb": (230, 160, 255),
+    },
+}
+
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
 try:
     from items.inventory import Inventory
@@ -101,8 +146,35 @@ class PlayerNode(AnimatedNode):
         except Exception:
             self.sword_slash_image = None
 
+        # ธีมสีของเอฟเฟ็กต์ดาบ (ปรับได้ที่นี่)
+        # - default เป็นโทนฟ้า (เหมือนของเดิม)
+        # - ถ้าอยากเปลี่ยนสี ให้แก้ค่า tuple ด้านล่างได้เลย
+        #
+        # รูปแบบ:
+        #   core_rgb = สีเส้นคม ๆ (ด้านใน)
+        #   glow_rgb = สีเรืองแสง (ด้านนอก)
+        #   sword_tint_rgb = (optional) สี tint ของรูปดาบ sword_slash.png
+                # ---- Sword slash theme (เลือก preset ได้) ----
+        # เปลี่ยนธีมได้ เช่น: "blue" | "arcane" | "storm" | "holy" | "plasma"
+        # หมายเหตุ: default เป็น "blue" (โทนฟ้าเดิมของโปรเจกต์)
+        self.sword_slash_theme_name = "plasma"
+        self.sword_slash_theme = SWORD_SLASH_THEMES.get(
+            self.sword_slash_theme_name, SWORD_SLASH_THEMES["blue"]
+        ).copy()
 
-        # ---------- Animation state ----------
+        # ถ้าอยากให้ sword_all_direction_2 คนละสี ให้ตั้งค่าเป็นชื่อธีม (หรือกำหนด dict เอง)
+        self.sword_slash_theme_2_name = "holy"  # เช่น "plasma"
+        self.sword_slash_theme_2 = (
+            SWORD_SLASH_THEMES.get(self.sword_slash_theme_2_name).copy()
+            if self.sword_slash_theme_2_name in SWORD_SLASH_THEMES
+            else None
+        )
+
+        # หรือ override แบบกำหนดสีเอง:
+        # self.sword_slash_theme = {"core_rgb": (210,255,255), "glow_rgb": (0,220,255), "sword_tint_rgb": (0,220,255)}
+        # self.sword_slash_theme_2 = {"core_rgb": (255,250,220), "glow_rgb": (255,170,60), "sword_tint_rgb": (255,170,60)}
+
+# ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
         self.state: str = "idle"      # idle / walk / attack / hurt / dead / cast
         self.direction: str = "down"  # down / left / right / up
@@ -369,13 +441,13 @@ class PlayerNode(AnimatedNode):
 
             elif weapon.id == "sword_all_direction":
                 # ดาบรอบทิศทางเพิ่มดาเมจ + โอกาสติดคริ
-                self.stats.attack += 4
-                self.stats.crit_chance += 0.05
+                self.stats.attack += 5
+                self.stats.crit_chance += 0.1
             
             elif weapon.id == "sword_all_direction_2":
                 # ดาบรอบทิศทางเพิ่มดาเมจ + โอกาสติดคริ
-                self.stats.attack += 5
-                self.stats.crit_chance += 0.05
+                self.stats.attack += 10
+                self.stats.crit_chance += 0.1
 
             # เผื่ออนาคตมี bow_power_2, bow_power_3
             elif weapon.id.startswith("bow_power_"):
@@ -1060,15 +1132,12 @@ class PlayerNode(AnimatedNode):
 
                 # สร้างเอฟเฟ็กต์ฟันตามทิศนั้น ๆ
                 # SlashEffectNode จะไปวาดเส้นโค้งตามมุมมอง isometric 25° เอง
-                SlashEffectNode(
-                    self.game,
-                    attack_rect,
-                    slash_dir,
-                    self.game.all_sprites,
-                )
-
-                # รูปดาบวิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์เฉพาะ 2x
+                # Theme: default ฟ้า แต่ override ได้จาก PlayerNode
+                theme = getattr(self, "sword_slash_theme", None)
                 if weapon_id == "sword_all_direction_2":
+                    theme = getattr(self, "sword_slash_theme_2", None) or theme
+                # รูปดาบวิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์ (รองรับธีมสี)
+                if weapon_id in ("sword_all_direction", "sword_all_direction_2"):
                     # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
                     if getattr(self, "sword_slash_image", None) is not None:
                         SwordSlashArcNode(
@@ -1079,6 +1148,7 @@ class PlayerNode(AnimatedNode):
                             offset,                    # radius
                             0.20,                      # duration
                             self.game.all_sprites,     # *groups
+                            theme=theme,
                         )
 
             # เช็คว่าศัตรูตัวไหนโดนฟัน (โดนซ้ำหลายทิศก็ให้โดนครั้งเดียว)
@@ -1262,7 +1332,7 @@ class PlayerNode(AnimatedNode):
         if weapon and weapon.id == "bow_power_1":
             trail_theme = "plasma"   # หรือ "crimson" / "arcane" / "holy"
         elif weapon and weapon.id == "bow_power_2":
-            trail_theme = "arcane"
+            trail_theme = "holy"
 
         ProjectileNode(
             self,

@@ -43,6 +43,7 @@ class SlashRingBeamNode(pygame.sprite.Sprite):
         self,
         center: tuple[float, float],
         *groups: pygame.sprite.AbstractGroup,
+        theme: dict | None = None,
         life: float = 0.10,
         radius_start: float = 6.0,
         radius_end: float = 22.0,
@@ -52,6 +53,14 @@ class SlashRingBeamNode(pygame.sprite.Sprite):
     ) -> None:
         super().__init__(*groups)
         self.center = pygame.Vector2(center)
+
+        # Theme colors
+        _theme = theme or {}
+        self._core_rgb = tuple(_theme.get("core_rgb", (235, 255, 255)))
+        self._glow_rgb = tuple(_theme.get("glow_rgb", (0, 220, 255)))
+        self._core_rgb = tuple(max(0, min(255, int(v))) for v in self._core_rgb)
+        self._glow_rgb = tuple(max(0, min(255, int(v))) for v in self._glow_rgb)
+
         self.life = max(0.01, float(life))
         self.elapsed = 0.0
         self.r0 = float(radius_start)
@@ -81,12 +90,12 @@ class SlashRingBeamNode(pygame.sprite.Sprite):
         cx = self._max_r
         cy = self._max_r
 
-        glow_col = (0, 220, 255, a)
-        core_col = (235, 255, 255, min(255, a + 30))
+        glow_col = (*self._glow_rgb, a)
+        core_col = (*self._core_rgb, min(255, a + 30))
 
         if self.glow:
-            pygame.draw.circle(self.image, (0, 220, 255, max(0, a // 3)), (cx, cy), int(r) + 6, self.thickness + 6)
-            pygame.draw.circle(self.image, (0, 220, 255, max(0, a // 2)), (cx, cy), int(r) + 3, self.thickness + 3)
+            pygame.draw.circle(self.image, (*self._glow_rgb, max(0, a // 3)), (cx, cy), int(r) + 6, self.thickness + 6)
+            pygame.draw.circle(self.image, (*self._glow_rgb, max(0, a // 2)), (cx, cy), int(r) + 3, self.thickness + 3)
 
         pygame.draw.circle(self.image, glow_col, (cx, cy), int(r), self.thickness)
         pygame.draw.circle(self.image, core_col, (cx, cy), max(0, int(r) - 1), 1)
@@ -112,6 +121,7 @@ class SlashArcSegmentNode(pygame.sprite.Sprite):
         p0: tuple[float, float],
         p1: tuple[float, float],
         *groups: pygame.sprite.AbstractGroup,
+        theme: dict | None = None,
         life: float = 0.14,
         start_alpha: int = 150,
         thickness: int = 4,
@@ -121,6 +131,13 @@ class SlashArcSegmentNode(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.p0 = pygame.Vector2(p0)
         self.p1 = pygame.Vector2(p1)
+        # Theme colors
+        _theme = theme or {}
+        self._core_rgb = tuple(_theme.get("core_rgb", (235, 255, 255)))
+        self._glow_rgb = tuple(_theme.get("glow_rgb", (0, 220, 255)))
+        self._core_rgb = tuple(max(0, min(255, int(v))) for v in self._core_rgb)
+        self._glow_rgb = tuple(max(0, min(255, int(v))) for v in self._glow_rgb)
+
         self.life = max(0.01, float(life))
         self.t = 0.0
         self.a0 = max(0, min(255, int(start_alpha)))
@@ -149,12 +166,12 @@ class SlashArcSegmentNode(pygame.sprite.Sprite):
         p0 = self.p0 - self._origin
         p1 = self.p1 - self._origin
 
-        glow_col = (0, 220, 255, a)
-        core_col = (235, 255, 255, min(255, a + 30))
+        glow_col = (*self._glow_rgb, a)
+        core_col = (*self._core_rgb, min(255, a + 30))
 
         if self.glow:
-            pygame.draw.line(self.image, (0, 220, 255, max(0, a // 3)), p0, p1, self.thickness + 6)
-            pygame.draw.line(self.image, (0, 220, 255, max(0, a // 2)), p0, p1, self.thickness + 3)
+            pygame.draw.line(self.image, (*self._glow_rgb, max(0, a // 3)), p0, p1, self.thickness + 6)
+            pygame.draw.line(self.image, (*self._glow_rgb, max(0, a // 2)), p0, p1, self.thickness + 3)
 
         pygame.draw.line(self.image, glow_col, p0, p1, self.thickness)
         pygame.draw.line(self.image, core_col, p0, p1, max(1, self.thickness // 2))
@@ -216,14 +233,33 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
         radius: float = 140.0,
         duration: float = 0.35,  # วงกลมเต็มควรช้ากว่าเดิมเล็กน้อย (แต่ caller ยังส่งได้)
         *groups: pygame.sprite.AbstractGroup,
+        theme: dict | None = None,
     ) -> None:
         super().__init__(*groups)
 
         self.game = game
         self.center = pygame.Vector2(center_pos)
+
+        # Theme colors (ส่งมาจาก PlayerNode)
+        self._theme = theme or {}
+        self._core_rgb = tuple(self._theme.get("core_rgb", (235, 255, 255)))
+        self._glow_rgb = tuple(self._theme.get("glow_rgb", (0, 220, 255)))
+        self._core_rgb = tuple(max(0, min(255, int(v))) for v in self._core_rgb)
+        self._glow_rgb = tuple(max(0, min(255, int(v))) for v in self._glow_rgb)
+
         self.direction = self._normalize_direction(direction)
 
         self.base_image = sword_image.convert_alpha()
+        # optional: tint sword sprite ตามธีม
+        tint_rgb = tuple(self._theme.get("sword_tint_rgb", self._glow_rgb))
+        tint_rgb = tuple(max(0, min(255, int(v))) for v in tint_rgb)
+        if tint_rgb != (0, 220, 255):
+            tinted = self.base_image.copy()
+            tint_surf = pygame.Surface(tinted.get_size(), pygame.SRCALPHA)
+            tint_surf.fill((*tint_rgb, 255))
+            tinted.blit(tint_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            self.base_image = tinted
+
         self.radius = float(radius)
         self.duration = max(0.01, float(duration))
         self.elapsed = 0.0
@@ -240,7 +276,8 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
         base_angle = math.atan2(dv.y, dv.x)
 
         # NOTE: โปรเจกต์นี้เคยกลับด้าน; ใช้ flipped default ให้เข้ากับการฟันในเกมคุณ
-        clockwise_on_screen = (not self._preferred_clockwise(dv))
+        # ให้ทุกทิศหมุนทิศทางเดียวกัน เพื่อให้ “เหมือนครั้งแรก (ทิศ up)”
+        clockwise_on_screen = True
 
         # ✅ สร้างวงกลมเต็ม: start = base_angle (เหมือน “0° ของทิศนั้น”), end = start +/- 360°
         arc_offsets = self._generate_circle_offsets(
@@ -256,6 +293,21 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
         x0, y0 = self.path[0]
         self.image = self.base_image
         self.rect = self.image.get_rect(center=(x0, y0))
+        # Seed prev_tip เพื่อให้ “ครั้งแรก” ก็มีเส้น segment ทันที (ไม่ต่างจากครั้งถัดไป)
+        # (กันกรณีเฟรมแรก lag จากการสร้าง cache/โหลด resource)
+        if len(self.path) > 1:
+            x1, y1 = self.path[0]
+            x2, y2 = self.path[1]
+            dx0 = x2 - x1
+            dy0 = y2 - y1
+            mag0 = math.hypot(dx0, dy0)
+            if mag0 > 1e-3:
+                ux0 = dx0 / mag0
+                uy0 = dy0 / mag0
+                tip_offset0 = 20.0
+                self._prev_tip = (x1 + ux0 * tip_offset0, y1 + uy0 * tip_offset0)
+            else:
+                self._prev_tip = (x1, y1)
 
     # --------------------
     # Direction helpers
@@ -314,64 +366,88 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
     # Update
     # --------------------
     def update(self, dt: float) -> None:
-        self.elapsed += dt
-        if self.elapsed >= self.duration or len(self.path) <= 1:
+        # ให้ผลลัพธ์ “คงที่” แม้เฟรมแรกมี lag (เช่นตอนสร้าง cache/โหลด resource)
+        # เป้าหมาย: ฟันครั้งแรกต้องหน้าตาเหมือนครั้งถัดไป (ดาวเหมือนกัน)
+        if len(self.path) <= 1:
             self.kill()
             return
 
-        t = self.elapsed / self.duration
+        remaining = self.duration - self.elapsed
+        if remaining <= 0.0:
+            self.kill()
+            return
+
+        # clamp dt ไม่ให้ข้ามเอฟเฟ็กต์ทั้งก้อนในเฟรมเดียว
+        dt_step = dt if dt < remaining else remaining
+        self.elapsed += dt_step
+
         max_index = len(self.path) - 1
 
-        pos_f = t * max_index
-        i = int(pos_f)
-        j = min(i + 1, max_index)
-        local_t = pos_f - i
+        def _sample(at_elapsed: float) -> tuple[float, float, float, float, float]:
+            t = at_elapsed / self.duration
+            t = max(0.0, min(1.0, t))
 
-        x1, y1 = self.path[i]
-        x2, y2 = self.path[j]
-        x = x1 + (x2 - x1) * local_t
-        y = y1 + (y2 - y1) * local_t
+            pos_f = t * max_index
+            i = int(pos_f)
+            j = min(i + 1, max_index)
+            local_t = pos_f - i
 
-        # tangent rotation
-        dx = x2 - x1
-        dy = y2 - y1
-        if dx == 0 and dy == 0:
-            angle_deg = 0.0
-        else:
-            angle_deg = -math.degrees(math.atan2(dy, dx))
+            x1, y1 = self.path[i]
+            x2, y2 = self.path[j]
+            x = x1 + (x2 - x1) * local_t
+            y = y1 + (y2 - y1) * local_t
 
+            dx = x2 - x1
+            dy = y2 - y1
+
+            if dx == 0 and dy == 0:
+                angle_deg = 0.0
+            else:
+                angle_deg = -math.degrees(math.atan2(dy, dx))
+
+            return x, y, dx, dy, angle_deg
+
+        # ---- current frame ----
+        x, y, dx, dy, angle_deg = _sample(self.elapsed)
         rotated = pygame.transform.rotate(self.base_image, angle_deg)
 
-        # trail timer
-        self._trail_timer += dt
-        if self._trail_timer >= self._trail_interval:
-            self._trail_timer = 0.0
+        # ---- trail emit ----
+        # ทำให้การ “ปล่อย segment/afterimage” เกิดตามช่วงเวลาคงที่
+        # ต่อให้ dt_step ใหญ่ (เกิดจาก lag ตอนแรก) ก็จะปล่อยหลายครั้งแบบถูกตำแหน่ง
+        self._trail_timer += dt_step
+        while self._trail_timer >= self._trail_interval:
+            self._trail_timer -= self._trail_interval
+
+            emit_elapsed = self.elapsed - self._trail_timer
+            ex, ey, edx, edy, eang = _sample(emit_elapsed)
+            erotated = pygame.transform.rotate(self.base_image, eang)
 
             # afterimage (จาง)
             SwordAfterImageNode(
-                rotated,
-                (x, y),
+                erotated,
+                (ex, ey),
                 *self._groups_for_trail,
                 life=self._AFTERIMAGE_LIFE,
                 start_alpha=self._AFTERIMAGE_ALPHA,
             )
 
             # tip position (ahead along motion)
-            tip_x, tip_y = x, y
-            mag = math.hypot(dx, dy)
+            tip_x, tip_y = ex, ey
+            mag = math.hypot(edx, edy)
             if mag > 1e-3:
-                ux = dx / mag
-                uy = dy / mag
+                ux = edx / mag
+                uy = edy / mag
                 tip_offset = 20.0
-                tip_x = x + ux * tip_offset
-                tip_y = y + uy * tip_offset
+                tip_x = ex + ux * tip_offset
+                tip_y = ey + uy * tip_offset
 
-            # ✅ เส้นทาง “ไล่” เป็นเส้นโค้ง: spawn segment จาก prev_tip -> tip
+            # spawn segment จาก prev_tip -> tip
             if self._prev_tip is not None:
                 SlashArcSegmentNode(
                     self._prev_tip,
                     (tip_x, tip_y),
                     *self._groups_for_trail,
+                    theme=self._theme,
                     life=self._SEG_LIFE,
                     start_alpha=self._SEG_ALPHA,
                     thickness=self._SEG_THICKNESS,
@@ -384,6 +460,7 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
                     SlashRingBeamNode(
                         (tip_x, tip_y),
                         *self._groups_for_trail,
+                        theme=self._theme,
                         life=self._RING_LIFE,
                         radius_start=6.0,
                         radius_end=22.0,
@@ -396,3 +473,6 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
 
         self.image = rotated
         self.rect = self.image.get_rect(center=(x, y))
+
+        if self.elapsed >= self.duration - 1e-9:
+            self.kill()
