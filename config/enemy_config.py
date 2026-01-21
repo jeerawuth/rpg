@@ -105,6 +105,40 @@ ENEMY_CONFIG: dict[str, dict] = {
         "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
+    "demona": {
+        "sprite_id": "demona",
+        "stats": Stats(
+            max_hp=200,
+            hp=200,
+            attack=30,
+            magic=0,
+            armor=3,
+            resistances={"fire": 0.4},
+            crit_chance=0.05,
+            crit_multiplier=1.5,
+        ),
+        "speed": 100,
+        "move_range": 700,
+        "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "xp_reward": 10,
+    },
+    "green": {
+        "sprite_id": "green",
+        "stats": Stats(
+            max_hp=100,
+            hp=100,
+            attack=10,
+            magic=0,
+            armor=3,
+            resistances={"fire": 0.4},
+            crit_chance=0.05,
+            crit_multiplier=1.5,
+        ),
+        "speed": 80,
+        "move_range": 600,
+        "aggro_radius": 560,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "xp_reward": 10,
+    },
     # เพิ่ม enemy ชนิดใหม่ได้เรื่อย ๆ
     # "orc": {...},
     # "bat": {...},

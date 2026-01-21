@@ -460,16 +460,16 @@
   ],
 
   "enemy_spawns": [
-    { "type": "slime_green", "pos": [656, 975], "spawn_time": 0 },
-    { "type": "slime_green", "pos": [856, 875], "spawn_time": 10 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 10 },
-    { "type": "slime_green", "pos": [756, 775], "spawn_time": 10 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 15 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 20 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 20 },
-    { "type": "slime_green", "pos": [656, 675], "spawn_time": 25 },
-    { "type": "slime_green", "pos": [636, 675], "spawn_time": 25 },
-    { "type": "boss_orc", "pos": [956, 975], "spawn_time": 25 }
+    { "type": "green", "pos": [656, 975], "spawn_time": 0 },
+    { "type": "green", "pos": [856, 875], "spawn_time": 10 },
+    { "type": "green", "pos": [656, 675], "spawn_time": 10 },
+    { "type": "green", "pos": [756, 775], "spawn_time": 10 },
+    { "type": "green", "pos": [956, 975], "spawn_time": 15 },
+    { "type": "green", "pos": [656, 675], "spawn_time": 20 },
+    { "type": "green", "pos": [956, 975], "spawn_time": 20 },
+    { "type": "demona", "pos": [656, 675], "spawn_time": 25 },
+    { "type": "demona", "pos": [636, 675], "spawn_time": 25 },
+    { "type": "demona", "pos": [956, 975], "spawn_time": 25 }
   ],
 
   "item_spawns": [
