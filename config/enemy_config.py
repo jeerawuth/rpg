@@ -139,6 +139,23 @@ ENEMY_CONFIG: dict[str, dict] = {
         "aggro_radius": 560,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
     },
+    "spider": {
+        "sprite_id": "spider",
+        "stats": Stats(
+            max_hp=40,
+            hp=40,
+            attack=10,
+            magic=0,
+            armor=3,
+            resistances={"fire": 0.4},
+            crit_chance=0.05,
+            crit_multiplier=1.5,
+        ),
+        "speed": 150,
+        "move_range": 700,
+        "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
+        "xp_reward": 10,
+    },
     # เพิ่ม enemy ชนิดใหม่ได้เรื่อย ๆ
     # "orc": {...},
     # "bat": {...},

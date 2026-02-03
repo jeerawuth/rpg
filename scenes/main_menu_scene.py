@@ -30,7 +30,7 @@ class MainMenuScene(BaseScene):
                             next_scene_factory=lambda: GameScene(self.game),
                             items_per_frame=2,
                             title="Loading...",
-                            note="กำลังเตรียมทรัพยากรครั้งแรก",
+                            note=" ",
                         )
                     )
                 elif event.key == pygame.K_o:
