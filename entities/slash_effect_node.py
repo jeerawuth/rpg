@@ -70,6 +70,20 @@ class SlashEffectNode(AnimatedNode):
         "hit2_thickness_boost": 5,
     }
 
+    # โหมดอัลติ (Ultimate): อลังการงานสร้าง
+    # - กวาดกว้างมาก (150 องศา)
+    # - เส้นหนาพิเศษ
+    # - Spark เยอะ
+    _ULTIMATE: Dict[str, Any] = {
+        "sweep_deg": 150.0,
+        "cross_offset_deg": 8.0,
+        "iso_sequence_deg": (18.0, 30.0), # บิดมุมให้ดู 3D จัดๆ
+        "overlap_start_frame": 4,
+        "num_frames_per_hit": 10,  # เฟรมไม่ต้องเยอะมาก เน้นเร็ว
+        "frame_duration": 0.035,   # เร็ว
+        "hit2_thickness_boost": 8, # หนาสะใจ
+    }
+
     _STYLE_PRESETS: Dict[str, Dict[str, Any]] = {
         "normal": _DEFAULTS,
         "default": _DEFAULTS,
@@ -78,6 +92,8 @@ class SlashEffectNode(AnimatedNode):
         "heavy": _SOULSLIKE,
         "soulslike": _SOULSLIKE,
         "souls": _SOULSLIKE,
+        "ultimate": _ULTIMATE,
+        "spectacular": _ULTIMATE,
     }
 
 
@@ -502,8 +518,9 @@ class SlashEffectNode(AnimatedNode):
 
             # Spark
             rng = random.Random(1337 + seed_offset + fi * 97)
-            spark_count = 12 if thickness_boost else 10
-            spread = 7 if thickness_boost else 6
+            # เพิ่ม spark ตามความหนา (ยิ่งหนายิ่งเยอะ)
+            spark_count = int(10 + thickness_boost * 2)
+            spread = int(6 + thickness_boost * 1.5)
             for _ in range(spark_count):
                 idx = rng.randint(0, n - 1)
                 px, py = arc_points[idx]

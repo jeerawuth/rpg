@@ -1133,10 +1133,19 @@ class PlayerNode(AnimatedNode):
 
                 # สร้างเอฟเฟ็กต์ฟันตามทิศนั้น ๆ
                 # SlashEffectNode จะไปวาดเส้นโค้งตามมุมมอง isometric 25° เอง
-                # Theme: default ฟ้า แต่ override ได้จาก PlayerNode
+                # ใช้แบบ Ultimate ให้ดูอลังการ
                 theme = getattr(self, "sword_slash_theme", None)
                 if weapon_id == "sword_all_direction_2":
                     theme = getattr(self, "sword_slash_theme_2", None) or theme
+                    
+                SlashEffectNode(
+                    self.game,
+                    attack_rect,
+                    slash_dir,
+                    self.game.all_sprites,
+                    style="ultimate",
+                    theme=theme
+                )
                 # รูปดาบวิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์ (รองรับธีมสี)
                 if weapon_id in ("sword_all_direction", "sword_all_direction_2"):
                     # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
@@ -1187,11 +1196,13 @@ class PlayerNode(AnimatedNode):
             attack_rect.inflate_ip(10, 10)
 
             # เอฟเฟ็กต์ฟันดาบตามทิศที่ player หัน
+            # ใช้แบบ normal ก็พอสำหรับฟันธรรมดา หรือ heavy ให้ดูหนักแน่น
             SlashEffectNode(
                 self.game,
                 attack_rect,
                 self.direction,          # "up" / "down" / "left" / "right" / ทแยง
                 self.game.all_sprites,
+                style="heavy" # ให้ดูแรงกว่าเดิมนิดนึง
             )
 
             # =============================
