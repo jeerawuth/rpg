@@ -5,6 +5,8 @@ import pygame
 import math
 
 from .animated_node import AnimatedNode
+from .damage_number_node import DamageNumberNode
+from .hit_effect_node import HitEffectNode
 from combat.damage_system import Stats, DamagePacket, compute_damage, DamageResult
 from combat.status_effect_system import StatusEffectManager
 from config.enemy_config import ENEMY_CONFIG
@@ -380,6 +382,24 @@ class EnemyNode(AnimatedNode):
         else:
             self.hurt_timer = 0.25
             self.state = "hurt"
+
+        # Spawn Damage Number
+        if result.final_damage > 0:
+            DamageNumberNode(
+                self.game,
+                self.rect.midtop,
+                result.final_damage,
+                self.game.all_sprites,
+                is_crit=result.is_crit
+            )
+            
+            # Spawn Hit Effect
+            HitEffectNode(
+                self.game,
+                self.rect.center,
+                self.game.all_sprites,
+                scale=1.2 if result.is_crit else 0.8
+            )
 
         return result
 

@@ -11,6 +11,7 @@ from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, DamageResult, compute_damage
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
+from .damage_number_node import DamageNumberNode
 from .projectile_node import ProjectileNode
 from entities.slash_effect_node import SlashEffectNode
 # ดาบฟันตามแนวโค้ง
@@ -1427,6 +1428,17 @@ class PlayerNode(AnimatedNode):
         else:
             # ยังไม่ตาย -> ให้เล่นแอนิเมชันโดนตีสั้น ๆ
             self.hurt_timer = 0.25
+
+        # Spawn Damage Number (Red for player)
+        if result.final_damage > 0:
+            DamageNumberNode(
+                self.game,
+                self.rect.midtop,
+                result.final_damage,
+                self.game.all_sprites,
+                color=(255, 50, 50),
+                is_crit=result.is_crit
+            )
 
         return result
 
