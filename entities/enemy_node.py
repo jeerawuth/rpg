@@ -148,6 +148,10 @@ class EnemyNode(AnimatedNode):
         # ---------- AI / Movement ----------
         # ใช้ speed จาก config (เหมือนของเดิม)
         self.speed: float = cfg.get("speed", 60)
+        self.max_speed = self.speed  # Alias for Boids logic
+        self.max_force = 150.0  # Controls agility/turning speed
+        self.acceleration = pygame.Vector2(0, 0)
+        
         self.patrol_dir: int = 1       # 1 = เดินขวา, -1 = เดินซ้าย
         self.move_range: float = cfg.get("move_range", 80)
         self._origin_x: int = pos[0]
@@ -207,7 +211,61 @@ class EnemyNode(AnimatedNode):
         return frames
 
     # ============================================================
-    # Movement / AI
+    # Movement / AI (Steering Behaviors)
+    # ============================================================
+    def _seek(self, target_pos: pygame.Vector2) -> pygame.Vector2:
+        """
+        Steering force to move towards target
+        """
+        desired = target_pos - self.pos
+        # ถ้าถึงจุดหมายแล้ว (ระยะใกล้มาก) ให้หยุด
+        dist = desired.length()
+        if dist < 1.0:
+            return pygame.Vector2(0, 0)
+            
+        desired = desired.normalize() * self.max_speed
+        steer = desired - self.velocity
+        
+        # Limit steer force
+        if steer.length() > self.max_force:
+            steer.scale_to_length(self.max_force)
+            
+        return steer
+
+    def _separate(self, neighbors: list[EnemyNode]) -> pygame.Vector2:
+        """
+        Steering force to avoid crowding neighbors
+        """
+        desired_separation = self.radius * 2.2 # ระยะห่างที่ต้องการ (ใหญ่กว่าตัวนิดหน่อย)
+        steer = pygame.Vector2(0, 0)
+        count = 0
+        
+        for other in neighbors:
+            if other is self or other.is_dead:
+                continue
+                
+            d = self.pos.distance_to(other.pos)
+            if 0 < d < desired_separation:
+                # คำนวณ vector หนี (จาก other -> self)
+                diff = self.pos - other.pos
+                diff.normalize_ip()
+                diff /= d  # Weight by distance (ยิ่งใกล้ยิ่งหนีแรง)
+                steer += diff
+                count += 1
+                
+        if count > 0:
+            steer /= count
+            if steer.length() > 0:
+                steer.normalize_ip()
+                steer *= self.max_speed
+                steer -= self.velocity
+                if steer.length() > self.max_force:
+                    steer.scale_to_length(self.max_force)
+                    
+        return steer
+
+    # ============================================================
+    # Movement / AI (Old Patrol)
     # ============================================================
     def _patrol(self, dt: float) -> None:
         if self.is_dead:
@@ -244,7 +302,7 @@ class EnemyNode(AnimatedNode):
     def _update_ai(self, dt: float) -> None:
         """
         เลือกว่า enemy ตัวนี้จะ 'patrol' เฉย ๆ หรือ 'วิ่งไล่ player'
-        ตามระยะ aggro_radius
+        โดยใช้ระบบ Steering Behaviors
         """
         if self.is_dead:
             self.velocity.update(0, 0)
@@ -256,33 +314,48 @@ class EnemyNode(AnimatedNode):
             self._patrol(dt)
             return
 
+        # คำนวณระยะห่าง
         ex, ey = self.rect.center
         px, py = player.rect.center
+        
+        pos_vec = self.pos
+        player_pos = pygame.Vector2(px, py)
+        dist_sq = pos_vec.distance_squared_to(player_pos)
 
-        dx = px - ex
-        dy = py - ey
-        dist_sq = dx * dx + dy * dy
-
-        # ถ้า player อยู่ในรัศมี -> ไล่ตาม
+        # ถ้า player อยู่ในรัศมี -> ไล่ตามด้วย Physics
         if dist_sq <= self._aggro_radius_sq:
-            # หาทิศทางไปหา player
-            vec = pygame.Vector2(dx, dy)
-            if vec.length_squared() > 0:
-                vec = vec.normalize()
+            # 1. Reset acceleration
+            self.acceleration *= 0 
+            
+            # 2. Add Forces
+            # Seek Force
+            seek_force = self._seek(player_pos)
+            self.acceleration += seek_force
+            
+            # Separation Force (Optional: ถ้า enemies เยอะๆ ควรเปิดใช้)
+            # ต้องดึง list เพื่อนบ้านมาจาก game.enemies
+            # เพื่อประสิทธิภาพ เราจะ separate เฉพาะตัวใกล้ๆ จริงๆ (แต่ในที่นี้ขอ check หมดหรือสุ่มก็ได้)
+            if self.game and hasattr(self.game, "enemies"):
+                 # สุ่ม check บ้างเพื่อลดภาระ หรือ check หมดถ้ามีไม่เยอะ
+                sep_force = self._separate(self.game.enemies.sprites())
+                self.acceleration += sep_force * 1.5 # Weight separation higher
+            
+            # 3. Apply Physics
+            self.velocity += self.acceleration * dt
+            # Limit speed
+            if self.velocity.length() > self.max_speed:
+                self.velocity.scale_to_length(self.max_speed)
+                
+            # 4. update position (ทำใน update หลักแล้ว แต่ต้องส่ง velocity ไป)
+            # เราจะไม่อัปเดต rect ที่นี่ จะทำใน update() หลักผ่าน _move_and_collide_circle
 
-            # ตั้งความเร็วให้วิ่งเข้าหา player
-            self.velocity.x = vec.x * self.speed
-            self.velocity.y = vec.y * self.speed
+            # ปรับทิศหัน
+            if self.velocity.length_squared() > 10: # ขยับนิดเดียวไม่ต้องหัน
+                self.facing = self.velocity.normalize()
 
-            # ขยับตำแหน่ง (ตอนนี้ยังไม่ได้ทำชนกับกำแพง)
-            self.rect.x += int(self.velocity.x * dt)
-            self.rect.y += int(self.velocity.y * dt)
-
-            # ปรับทิศหันให้ตรงกับทิศวิ่ง
-            self.facing.x = vec.x
-            self.facing.y = vec.y
         else:
             # ถ้าไกลเกินรัศมี -> เดิน patrol ไป-มาเหมือนเดิม
+            # (Patrol แบบเดิมมันปรับ rect เลย อาจจะต้องปรับปรุงถ้าจะให้เนียน)
             self._patrol(dt)
 
     # ============================================================
