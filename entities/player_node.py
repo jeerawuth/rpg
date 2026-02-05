@@ -653,6 +653,7 @@ class PlayerNode(AnimatedNode):
             group="weapon_override",
             refresh="reset",
         )
+        self.game.add_log(f"ใช้งาน {item_id} ({duration} วินาที)")
 
     # ============================================================
     # Temporary weapon buff: Fire Magic
@@ -671,6 +672,7 @@ class PlayerNode(AnimatedNode):
             group="weapon_override",
             refresh="reset",
         )
+        self.game.add_log(f"ใช้งาน {item_id} ({duration} วินาที)")
 
     # ============================================================
     # Temporary weapon buff: Bow Power
@@ -689,6 +691,7 @@ class PlayerNode(AnimatedNode):
             group="weapon_override",
             refresh="reset",
         )
+        self.game.add_log(f"ใช้งาน {item_id} ({duration} วินาที)")
 
     def _update_bow_power(self, dt: float) -> None:
         """นับถอยหลังบัฟ Bow และคืนอาวุธเดิมเมื่อหมดเวลา"""
@@ -738,6 +741,7 @@ class PlayerNode(AnimatedNode):
             group="weapon_override",
             refresh="reset",
         )
+        self.game.add_log(f"ใช้งาน {item_id} ({duration} วินาที)")
 
     def _update_magic_lightning_buff(self, dt: float) -> None:
         """นับถอยหลังบัฟถือ magic_lightning และคืนอาวุธเดิมเมื่อหมดเวลา"""
@@ -948,8 +952,10 @@ class PlayerNode(AnimatedNode):
             has_melee = ("attack", self.direction) in self.animations
             # หรือมีท่ายิงธนู (attack_arrow_*)
             has_bow = self.direction in getattr(self, "bow_attack_animations", {})
+            # หรือมีท่าเวทย์ไฟ (attack_fire_*)
+            has_fire = self.direction in getattr(self, "fire_attack_animations", {})
 
-            if has_melee or has_bow:
+            if has_melee or has_bow or has_fire:
                 self.state = "attack"
                 return
 
@@ -1001,7 +1007,7 @@ class PlayerNode(AnimatedNode):
             elif (
                 weapon
                 and weapon.item_type == "weapon"
-                and weapon.id == "fire_1"
+                and (weapon.id == "fire_1" or weapon.id == "fire_2")
                 and hasattr(self, "fire_attack_animations")
             ):
                 # พยายามใช้ทิศตรง
@@ -1559,28 +1565,28 @@ class PlayerNode(AnimatedNode):
         if weapon and weapon.item_type == "weapon" and weapon.id == "magic_lightning":
             ok, reason = self.cast_magic_lightning()
             if not ok:
-                print(f"ใช้ magic_lightning ไม่ได้ ({reason})")
+                self.game.add_log(f"ใช้เวทย์สายฟ้าไม่ได้ ({reason})")
             return
         
         # ✅ ถ้าถือ magic_lightning_2 -> ร่ายสายฟ้าแทนการฟันทุกตัว
         if weapon and weapon.item_type == "weapon" and weapon.id == "magic_lightning_2":
             ok, reason = self.cast_magic_lightning_all_area()
             if not ok:
-                print(f"ใช้ magic_lightning_2 ไม่ได้ ({reason})")
+                self.game.add_log(f"ใช้เวทย์สายฟ้าต่อเนื่องไม่ได้ ({reason})")
             return
 
         # ✅ ถ้าถือ fire_1 -> ยิงเวทย์ไฟ 8 ทิศ
         if weapon and weapon.item_type == "weapon" and weapon.id == "fire_1":
             ok, reason = self.cast_magic_fire(homing=False)
             if not ok:
-                print(f"ใช้ fire_1 ไม่ได้ ({reason})")
+                self.game.add_log(f"ใช้เวทย์ไฟไม่ได้ ({reason})")
             return
 
         # ✅ ถ้าถือ fire_2 -> ยิงเวทย์ไฟ 8 ทิศ + homing
         if weapon and weapon.item_type == "weapon" and weapon.id == "fire_2":
             ok, reason = self.cast_magic_fire(homing=True)
             if not ok:
-                print(f"ใช้ fire_2 ไม่ได้ ({reason})")
+                self.game.add_log(f"ใช้เวทย์ไฟติดตามไม่ได้ ({reason})")
             return
 
 
@@ -1612,9 +1618,9 @@ class PlayerNode(AnimatedNode):
         except Exception:
             pass
 
-        print(
-            f"[Player] took {result.final_damage} dmg "
-            f"({'CRIT' if result.is_crit else 'normal'}), "
+        crit_text = " (CRIT)" if result.is_crit else ""
+        self.game.add_log(
+            f"โดนโจมตี {result.final_damage}{crit_text}, "
             f"HP: {self.stats.hp}/{self.stats.max_hp}"
         )
 
@@ -1623,7 +1629,7 @@ class PlayerNode(AnimatedNode):
             self.sfx_hit.play()
 
         if killed_now:
-            print("[Player] died")
+            self.game.add_log("ผู้เล่นเสียชีวิต!")
             self.is_dead = True
             self.death_anim_started = True
             self.death_anim_done = False

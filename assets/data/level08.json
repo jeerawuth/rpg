@@ -273500,7 +273500,7 @@
   ],
   "item_spawns": [
     {
-      "item_id": "potion_small",
+      "item_id": "bow_power_3",
       "pos": [
         804,
         876
@@ -273536,7 +273536,7 @@
       "spawn_time": 10
     },
     {
-      "item_id": "shield_1",
+      "item_id": "fire_2",
       "pos": [
         640,
         1118

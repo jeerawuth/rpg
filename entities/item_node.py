@@ -179,12 +179,13 @@ class ItemNode(AnimatedNode):
                 stats.hp = min(stats.max_hp, stats.hp + total_heal)
                 gained = stats.hp - old_hp
 
-                print(
-                    f"[ItemNode] {item_data.id} healed +{gained} HP "
+                iname = getattr(item_data, "name", item_data.id)
+                self.game.add_log(
+                    f"{iname} ฟื้นฟู +{gained} HP "
                     f"({old_hp} -> {stats.hp}/{stats.max_hp})"
                 )
             else:
-                print("[ItemNode] WARNING: player ไม่มี stats, heal ไม่ได้")
+                self.game.add_log("[ItemNode] WARNING: player ไม่มี stats, heal ไม่ได้")
 
             used_instant = True
 

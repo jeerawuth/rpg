@@ -51,6 +51,17 @@ class GameApp:
     def quit(self) -> None:
         self.running = False
 
+    def add_log(self, text: str) -> None:
+        """
+        Delegate log message to the current scene if it supports it.
+        """
+        scene = getattr(self.scene_manager, "current_scene", None)
+        if scene and hasattr(scene, "message_log"):
+            scene.message_log.add(text)
+        else:
+            # Fallback print if no scene or no message_log
+            print(f"[LOG] {text}")
+
     def run(self) -> None:
         while self.running:
             dt_ms = self.clock.tick(FPS)

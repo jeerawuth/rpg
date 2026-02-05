@@ -16,6 +16,7 @@ from entities.decoration_node import DecorationNode
 
 from world.spawn_manager import SpawnManager
 from core.camera import Camera
+from core.message_log import MessageLog
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, UI_FONT_HUD_PATH
 from entities.item_node import ItemNode
 
@@ -160,6 +161,9 @@ class GameScene(BaseScene):
             deadzone_width=SCREEN_WIDTH // 2,   # กึ่งกลางจอ
             deadzone_height=SCREEN_HEIGHT // 2,
         )
+
+        # Message Log for HUD
+        self.message_log = MessageLog(max_messages=10, default_lifetime=5.0)
 
         # ---------- PLAYER CONTACT vs ENEMY ----------
         # ใช้ควบคุมจังหวะโดนชนไม่ให้โดนทุกเฟรม
@@ -453,8 +457,15 @@ class GameScene(BaseScene):
                 inv = getattr(self.player, "inventory", None)
                 if inv is not None:
                     leftover = inv.add_item(item_node.item_id, item_node.amount)
+                    if leftover < item_node.amount:
+                         # เก็บได้อย่างน้อย 1 ชิ้น
+                         picked_count = item_node.amount - leftover
+                         # หาชื่อไอเท็ม
+                         iname = getattr(item_node.item, "name", item_node.item_id)
+                         self.game.add_log(f"ได้รับ {iname} x{picked_count}")
+
                     if leftover > 0:
-                        print("Inventory full! ไอเท็มบางส่วนเก็บไม่เข้า")
+                        self.game.add_log("กระเป๋าเต็ม! เก็บไอเท็มบางส่วนไม่ได้")
 
             # 🔊 เล่นเสียงเก็บไอเท็ม
             if hasattr(self.player, "sfx_item_pickup"):
@@ -662,6 +673,8 @@ class GameScene(BaseScene):
         else:
             lines.append("Item Buff: -")
 
+        # (Old log location removed)
+
         # ทำให้ HUD อ่านชัดทุกฉาก: พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว + เงา
         self.draw_text_block(
             surface,
@@ -674,6 +687,34 @@ class GameScene(BaseScene):
             text_color=self.HUD_TEXT_COLOR,
             shadow=True,
         )
+
+        # ---------- Draw Message Log (Top Center) ----------
+        log_msgs = self.message_log.get_messages()
+        if log_msgs:
+            # 1. คำนวณความกว้างข้อความที่ยาวที่สุด
+            max_w = 0
+            for msg in log_msgs:
+                w = self.font.size(msg)[0]
+                if w > max_w:
+                    max_w = w
+            
+            # 2. คำนวณตำแหน่ง X ให้กึ่งกลาง
+            padding = 10
+            panel_w = max_w + padding * 2
+            center_x = SCREEN_WIDTH // 2
+            start_x = center_x - (panel_w // 2)
+
+            self.draw_text_block(
+                surface,
+                log_msgs,
+                (start_x, 10),  # y=10 (top)
+                self.font,
+                padding=padding,
+                line_gap=4,
+                panel_alpha=self.HUD_BG_ALPHA,  # หรือปรับให้เข้มขึ้นถ้าต้องการ
+                text_color=self.HUD_TEXT_COLOR,
+                shadow=True
+            )
 
 
 # ถ้าอยู่ในสถานะเคลียร์ด่าน ให้แสดงข้อความ Stage Clear กลางจอ

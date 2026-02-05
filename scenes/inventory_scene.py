@@ -199,9 +199,9 @@ class InventoryScene(BaseScene):
 
         equipped = eq.equip_from_inventory(inv, slot_index, slot=slot)
         if equipped:
-            print(f"Equipped {item.name} -> slot {slot}")
+            self.game.add_log(f"สวมใส่ {item.name} -> {slot}")
         else:
-            print(f"Equip {item.name} ล้มเหลว (slot={slot})")
+            self.game.add_log(f"สวมใส่ {item.name} ล้มเหลว (slot={slot})")
 
     # ----------------- EVENTS -----------------
     def handle_events(self, events) -> None:
