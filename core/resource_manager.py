@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 
 import pygame
 
@@ -38,7 +38,7 @@ class ResourceManager:
         self.item_scale = item_scale if item_scale is not None else sprite_scale
         self.item_scale_overrides = item_scale_overrides or {}
 
-        self._images: Dict[str, pygame.Surface] = {}
+        self._images: Dict[Tuple[str, float, Any], pygame.Surface] = {}
         self._sounds: Dict[str, pygame.mixer.Sound] = {}
         self._fonts: Dict[Tuple[Optional[str], int], pygame.font.Font] = {}
 
@@ -60,80 +60,71 @@ class ResourceManager:
     # ------------------------------------------------------------------
     # Images (sprites + tiles + projectiles + items)
     # ------------------------------------------------------------------
-    def load_image(self, relative_path: str, colorkey=None) -> pygame.Surface:
+    def load_image(self, relative_path: str, colorkey=None, scale_override: float | None = None) -> pygame.Surface:
         """
-        relative_path ตัวอย่าง:
-
-        - "player/idle/idle_down_01.png"
-            -> assets/graphics/images/player/idle/idle_down_01.png   (sprite)
-
-        - "tiles/overworld_tiles.png"
-            -> assets/graphics/tiles/overworld_tiles.png             (tile)
-
-        - "images/tiles/overworld_tiles.png"
-            -> map อัตโนมัติไป tiles/overworld_tiles.png
-               -> assets/graphics/tiles/overworld_tiles.png         (tile)
-
-        - "projectiles/arrow_01.png"
-            -> assets/graphics/images/projectiles/arrow_01.png      (projectile)
-
-        - "items/bow_power_01.png"
-            -> assets/graphics/images/items/bow_power_01.png        (item)
+        relative_path ตัวอย่าง: "player/idle/idle_down_01.png"
         """
-        key = relative_path
-        if key in self._images:
-            return self._images[key]
+        # --- Normalize path first ---
+        key_path = relative_path
+        
+        # --- Determine potential scale early for cache key ---
+        # Note: We duplicate some logic here or restructure to ensure key matches the effective scale
+        # For simplicity, we'll determine the scale first.
+        
+        # --- Normalize path logic (copied/moved up) ---
+        norm_path = relative_path
+        if norm_path.startswith("assets/"):
+            norm_path = norm_path[len("assets/"):]
+        if norm_path.startswith("graphics/"):
+            norm_path = norm_path[len("graphics/"):]
+        if norm_path.startswith("images/tiles/"):
+            norm_path = "tiles/" + norm_path[len("images/tiles/"):]
 
-        # --- Normalize path ---
-        if relative_path.startswith("assets/"):
-            relative_path = relative_path[len("assets/"):]
+        is_tile = norm_path.startswith("tiles/") or "/tiles/" in norm_path
+        is_projectile = norm_path.startswith("projectiles/") or "/projectiles/" in norm_path
+        is_item = norm_path.startswith("items/") or "/items/" in norm_path
 
-        if relative_path.startswith("graphics/"):
-            relative_path = relative_path[len("graphics/"):]
-
-        # แก้กรณี Tiled อ้าง "images/tiles/xxx"
-        if relative_path.startswith("images/tiles/"):
-            relative_path = "tiles/" + relative_path[len("images/tiles/"):]
-
-        # --- Determine type ---
-        is_tile = relative_path.startswith("tiles/") or "/tiles/" in relative_path
-        is_projectile = relative_path.startswith("projectiles/") or "/projectiles/" in relative_path
-        is_item = relative_path.startswith("items/") or "/items/" in relative_path
-
-        # --- Choose scale ---
-        if is_tile:
+        if scale_override is not None:
+            scale = scale_override
+        elif is_tile:
             scale = self.tile_scale
         elif is_projectile:
             scale = self.projectile_scale
         elif is_item:
-            # เริ่มจากค่า default ของ item ทั้งหมด
             scale = self.item_scale
-
-            # หา override ราย prefix
             for prefix, override_scale in self.item_scale_overrides.items():
-                # prefix เช่น "items/bow_power" จะ match:
-                #   "items/bow_power_01.png"
-                if relative_path.startswith(prefix):
+                if norm_path.startswith(prefix):
                     scale = override_scale
                     break
         else:
             scale = self.sprite_scale
 
-        # --- Build full path under assets/graphics/... ---
-        if relative_path.startswith("images/") or relative_path.startswith("tiles/"):
-            full_path = self._resolve("graphics", relative_path)
-        else:
-            # ไม่มี prefix -> ถือว่าอยู่ใต้ graphics/images
-            full_path = self._resolve("graphics", "images", relative_path)
+        # --- Check Cache with (path, scale) ---
+        cache_key = (key_path, scale, colorkey)
+        if cache_key in self._images:
+            return self._images[cache_key]
 
-        image = pygame.image.load(full_path).convert_alpha()
+        # --- Build full path under assets/graphics/... ---
+        if norm_path.startswith("images/") or norm_path.startswith("tiles/"):
+            full_path = self._resolve("graphics", norm_path)
+        else:
+            full_path = self._resolve("graphics", "images", norm_path)
+
+        try:
+            image = pygame.image.load(full_path).convert_alpha()
+        except FileNotFoundError:
+            # เพิ่ม logging หรือ print เถื่อน ๆ เพื่อ debug (แต่ใน lib ไม่ควร print)
+            raise 
+        except Exception:
+             raise 
+
         if colorkey is not None:
             image.set_colorkey(colorkey)
 
         # apply scale
         image = self._scale_surface(image, scale)
 
-        self._images[key] = image
+        self._images[cache_key] = image
         return image
 
     # ------------------------------------------------------------------

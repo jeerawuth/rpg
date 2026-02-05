@@ -5,6 +5,7 @@ from combat.damage_system import Stats
 ENEMY_CONFIG: dict[str, dict] = {
     "goblin": {
         "sprite_id": "goblin",
+        "scale": 0.35,
         "stats": Stats(
             max_hp=40,
             hp=40,
@@ -56,6 +57,7 @@ ENEMY_CONFIG: dict[str, dict] = {
     },
     "boss_orc": {
         "sprite_id": "boss_orc",
+        "scale": 0.3,  # ตัวใหญ่กว่าปกติ (ปกติ 0.25)
         "stats": Stats(
             max_hp=80,
             hp=80,
@@ -90,6 +92,7 @@ ENEMY_CONFIG: dict[str, dict] = {
     },
     "undead": {
         "sprite_id": "undead",
+        "scale": 0.2,  # ตัวเล็กกว่าปกติ (ปกติ 0.25)
         "stats": Stats(
             max_hp=300,
             hp=300,
@@ -124,6 +127,7 @@ ENEMY_CONFIG: dict[str, dict] = {
     },
     "green": {
         "sprite_id": "green",
+        "scale": 0.2,
         "stats": Stats(
             max_hp=100,
             hp=100,

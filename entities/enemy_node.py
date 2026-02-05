@@ -74,6 +74,9 @@ class EnemyNode(AnimatedNode):
         # โฟลเดอร์สไปรต์ (เช่น goblin, slime_green)
         self.sprite_id: str = cfg.get("sprite_id", enemy_id)
 
+        # Scale modifier (override default sprite_scale)
+        self.custom_scale: float | None = cfg.get("scale", None)
+
         # ---------- Animation state ----------
         self.animations: dict[tuple[str, str], list[pygame.Surface]] = {}
         self.state: str = "idle"      # idle / walk / hurt / dead
@@ -168,6 +171,8 @@ class EnemyNode(AnimatedNode):
         # ค่า XP ที่จะดรอปตอนตาย (ตอนนี้ยังไม่ใช้ แต่อาจใช้ในระบบเลเวลภายหลัง)
         self.xp_reward: int = cfg.get("xp_reward", 0)
 
+
+
     # ============================================================
     # Hp ratio calculation
     # ============================================================
@@ -201,9 +206,11 @@ class EnemyNode(AnimatedNode):
         while True:
             # assets/graphics/images/enemy/<sprite_id>/<state>/<state>_<direction>_01.png
             rel_path = f"enemy/{self.sprite_id}/{state}/{state}_{direction}_{index:02d}.png"
+            # print(f"[EnemyNode] Try load: {rel_path}") 
             try:
-                surf = self.game.resources.load_image(rel_path)
+                surf = self.game.resources.load_image(rel_path, scale_override=self.custom_scale)
             except Exception:
+                # print(f"[EnemyNode] Fail load: {rel_path} -> {e}")
                 break
             frames.append(surf)
             index += 1

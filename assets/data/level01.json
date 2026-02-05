@@ -192765,7 +192765,7 @@
       "amount": 1
     },
     {
-      "item_id": "sword_all_direction",
+      "item_id": "magic_lightning_2",
       "pos": [
         1376,
         556
@@ -192773,7 +192773,7 @@
       "amount": 1
     },
     {
-      "item_id": "shield_1",
+      "item_id": "magic_lightning",
       "pos": [
         956,
         876

@@ -1349,6 +1349,8 @@ class PlayerNode(AnimatedNode):
         self.state = "cast"
         self.attack_timer = max(getattr(self, "attack_timer", 0.0), 0.25)
         self.shoot_timer = self.shoot_cooldown
+
+        return True, "OK"
     # โจมตีด้วยเวทย์ไฟ 8 ทิศ
     def cast_magic_fire(self, homing: bool = False) -> tuple[bool, str]:
         if self.shoot_timer > 0:
