@@ -23,6 +23,8 @@ class PauseScene(BaseScene):
                 if event.key in (pygame.K_ESCAPE, pygame.K_p):
                     # กลับไป game scene (pop ตัวเองออก)
                     self.game.scene_manager.pop_scene()
+                elif event.key == pygame.K_q:
+                    self.game.quit()
 
     def update(self, dt: float) -> None:
         pass
@@ -40,6 +42,7 @@ class PauseScene(BaseScene):
 
         lines = [
             "ESC / P - Resume",
+            "Q - Quit Game",
         ]
         for i, t in enumerate(lines):
             t_surf = self.menu_font.render(t, True, self.HUD_TEXT_MUTED)
