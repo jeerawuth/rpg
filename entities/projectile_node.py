@@ -230,6 +230,8 @@ class ProjectileNode(AnimatedNode):
         lifetime: float = 1.5,
         *groups,
         trail_theme: str | None = None,
+        homing: bool = False,
+        homing_turn_rate: float = 4.0, # degrees per frame approx (or factor)
     ) -> None:
         # ---------- เก็บข้อมูลพื้นฐาน ----------
         self.owner = owner
@@ -241,6 +243,12 @@ class ProjectileNode(AnimatedNode):
         self.projectile_id = projectile_id
         self.position = pygame.Vector2(pos)
 
+        # Homing parameters
+        self.homing = homing
+        self.homing_turn_rate = homing_turn_rate
+        self.homing_delay = 0.15  # วิ่งตรงก่อนแป๊บนึงค่อยเลี้ยว
+        self.target: pygame.sprite.Sprite | None = None
+
         # เก็บ theme จาก caller (player_node)
         self.trail_theme = (trail_theme.strip().lower() if isinstance(trail_theme, str) and trail_theme.strip() else None)
 
@@ -250,23 +258,85 @@ class ProjectileNode(AnimatedNode):
         self.direction = direction.normalize()
 
         # คำนวณมุมจากทิศทาง และ snap เป็น 8 ทิศ (step ละ 45°)
-        dx, dy = self.direction.x, self.direction.y
-        raw_angle = math.degrees(math.atan2(dy, dx))
-        snapped_angle = round(raw_angle / 45.0) * 45.0
-        self._angle = snapped_angle
+        self._update_angle()
 
         # ---------- โหลดเฟรม (จะถูกหมุนแล้ว) ----------
-        frames = self._load_frames()
+        # โหลดมาเก็บไว้ก่อน แล้วค่อย rotate ตามมุม real-time
+        self.raw_frames = self._load_raw_frames()
+        self._rotate_frames()
 
         frame_duration = 0.06
         loop = True
 
-        super().__init__(frames, frame_duration, loop, *groups)
+        super().__init__(self.frames, frame_duration, loop, *groups)
 
         self.rect.center = self.position
 
         # ✅ attach comet trail (arrow only)
         self._maybe_attach_comet_trail(groups)
+
+    def _update_angle(self) -> None:
+        dx, dy = self.direction.x, self.direction.y
+        raw_angle = math.degrees(math.atan2(dy, dx))
+        if not self.homing:
+            # Snap 8 ทิศถ้าไม่ใช่ homing (แบบเดิม)
+            snapped_angle = round(raw_angle / 45.0) * 45.0
+            self._angle = snapped_angle
+        else:
+            # ถ้า homing ให้หมุนเนียนๆ
+            self._angle = raw_angle
+
+    def _load_raw_frames(self) -> list[pygame.Surface]:
+        """โหลดเฟรมต้นฉบับ (ยังไม่หมุน)"""
+        frames: list[pygame.Surface] = []
+        resources = self.owner.game.resources
+
+        index = 1
+        while True:
+            candidates = [
+                f"projectiles/{self.projectile_id}/{self.projectile_id}_{index:02d}.png",
+                f"projectiles/arrow/{self.projectile_id}_{index:02d}.png",
+                f"projectiles/{self.projectile_id}_{index:02d}.png",
+            ]
+            
+            base_frame = None
+            for path in candidates:
+                try:
+                    base_frame = resources.load_image(path)
+                    break
+                except Exception:
+                    continue
+            
+            if base_frame is None:
+                break
+            
+            frames.append(base_frame)
+            index += 1
+
+        if not frames:
+            # placeholder
+            w, h = 24, 6
+            base_frame = pygame.Surface((w, h), pygame.SRCALPHA)
+            pygame.draw.rect(base_frame, (250, 230, 80), base_frame.get_rect())
+            frames.append(base_frame)
+            
+        return frames
+
+    def _rotate_frames(self) -> None:
+        """สร้าง self.frames จาก self.raw_frames โดยหมุนตาม self._angle"""
+        self.frames = []
+        for f in self.raw_frames:
+            rotated = pygame.transform.rotate(f, -self._angle)
+            self.frames.append(rotated)
+        
+        # update current image in AnimatedNode
+        if hasattr(self, "image") and hasattr(self, "frame_index"):
+            idx = int(self.frame_index) % len(self.frames)
+            self.image = self.frames[idx]
+            # rect update center
+            center = self.rect.center
+            self.rect = self.image.get_rect()
+            self.rect.center = center
 
     # ------------------------------------------------------------------
     # VFX auto attach
@@ -330,34 +400,11 @@ class ProjectileNode(AnimatedNode):
         )
 
     # ------------------------------------------------------------------
-    # โหลดเฟรมจาก ResourceManager แล้วหมุนให้ตรงมุม
+    # Legacy frame load (ถูกแทนที่ด้วย _load_raw_frames + _rotate_frames)
+    # เก็บไว้เผื่อ backward compat แต่ในที่นี้เรา override __init__ แล้ว
     # ------------------------------------------------------------------
     def _load_frames(self) -> list[pygame.Surface]:
-        frames: list[pygame.Surface] = []
-        resources = self.owner.game.resources
-
-        index = 1
-        while True:
-            rel_path = f"projectiles/arrow/{self.projectile_id}_{index:02d}.png"
-            try:
-                base_frame = resources.load_image(rel_path)
-            except Exception:
-                break
-            else:
-                rotated = pygame.transform.rotate(base_frame, -self._angle)
-                frames.append(rotated)
-                index += 1
-
-        if frames:
-            return frames
-
-        # placeholder
-        w, h = 24, 6
-        base_frame = pygame.Surface((w, h), pygame.SRCALPHA)
-        pygame.draw.rect(base_frame, (250, 230, 80), base_frame.get_rect())
-
-        rotated = pygame.transform.rotate(base_frame, -self._angle)
-        return [rotated]
+        return []
 
     # ------------------------------------------------------------------
     # Update
@@ -367,6 +414,45 @@ class ProjectileNode(AnimatedNode):
         if self.age >= self.lifetime:
             self.kill()
             return
+
+        # ----- Homing Logic -----
+        if self.homing and self.age > self.homing_delay:
+            # Find target if none
+            if self.target is None or not self.target.alive():
+                enemies = getattr(self.owner.game, "enemies", None)
+                if enemies:
+                    # Find closest
+                    closest = None
+                    min_dist_sq = 99999999.0
+                    my_pos = self.position
+                    for e in enemies:
+                        if getattr(e, "is_dead", False):
+                            continue
+                        d_sq = (pygame.Vector2(e.rect.center) - my_pos).length_squared()
+                        if d_sq < min_dist_sq:
+                            min_dist_sq = d_sq
+                            closest = e
+                    
+                    if min_dist_sq < 600 * 600: # ระยะตรวจจับ
+                        self.target = closest
+
+            # Steer towards target
+            if self.target and self.target.alive():
+                to_target = pygame.Vector2(self.target.rect.center) - self.position
+                if to_target.length_squared() > 0:
+                    desired = to_target.normalize()
+                    # Lerp direction
+                    # rate ยิ่งมากยิ่งเลี้ยวเร็ว
+                    steer_strength = self.homing_turn_rate * dt * 5.0
+                    new_dir = self.direction.lerp(desired, min(1.0, steer_strength))
+                    if new_dir.length_squared() > 0:
+                        self.direction = new_dir.normalize()
+                        
+                        # Update visual rotation
+                        old_angle = self._angle
+                        self._update_angle()
+                        if abs(self._angle - old_angle) > 1.0:
+                            self._rotate_frames()
 
         self.position += self.direction * self.speed * dt
         self.rect.center = (int(self.position.x), int(self.position.y))

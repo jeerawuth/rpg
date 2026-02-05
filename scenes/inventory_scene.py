@@ -170,6 +170,22 @@ class InventoryScene(BaseScene):
             print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
             return
 
+        # ---------- เคสพิเศษ: เวทย์ไฟ ----------
+        if item.id in ("fire_1", "fire_2"):
+            duration = 15.0 # สกิลไฟ 1 ให้อยู่นานหน่อย
+            if item.id == "fire_2":
+                duration = 10.0 # สกิลไฟ 2 (homing) ให้แค่ 10 วิ
+            
+            stack.quantity -= 1
+            if stack.quantity <= 0:
+                inv.set(slot_index, None)
+                
+            if hasattr(self.player, "activate_magic_fire"):
+                self.player.activate_magic_fire(item_id=item.id, duration=duration)
+                
+            print(f"ใช้ไอเท็ม {item.name} ({duration} วินาที)")
+            return
+
         # ---------- เคสทั่วไป: equip ตามประเภท ----------
         if item.item_type == "weapon":
             slot = "main_hand"

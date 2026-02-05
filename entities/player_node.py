@@ -199,6 +199,10 @@ class PlayerNode(AnimatedNode):
         self.bow_attack_animations: dict[str, list[pygame.Surface]] = {}
         self._load_bow_attack_animations()
 
+        # โหลดเฟรมท่าเวทย์ไฟ (attack_fire_*)
+        self.fire_attack_animations: dict[str, list[pygame.Surface]] = {}
+        self._load_fire_attack_animations()
+
         # เลือกเฟรมเริ่มต้น
         if ("idle", "down") in self.animations:
             start_frames = self.animations[("idle", "down")]
@@ -383,7 +387,37 @@ class PlayerNode(AnimatedNode):
             if frames:
                 self.bow_attack_animations[direction] = frames
 
+            if frames:
+                self.bow_attack_animations[direction] = frames
 
+
+    # โหลดเฟรมท่าเวทย์ไฟ
+    def _load_fire_attack_animations(self) -> None:
+        """
+        โหลดเฟรม:
+        assets/graphics/images/player/attack/attack_fire_<direction>_01.png ...
+        """
+        # ทิศที่มีไฟล์จริง (จากที่ list ดูมี up, down, left, right)
+        # ทิศทแยงอาจจะไม่มี -> เดี๋ยว fallback เอา
+        directions = [
+            "down", "left", "right", "up",
+            "down_left", "down_right", "up_left", "up_right",
+        ]
+
+        for direction in directions:
+            frames: list[pygame.Surface] = []
+            index = 1
+            while True:
+                rel_path = f"player/attack/attack_fire_{direction}_{index:02d}.png"
+                try:
+                    surf = self.game.resources.load_image(rel_path)
+                except Exception:
+                    break
+                frames.append(surf)
+                index += 1
+
+            if frames:
+                self.fire_attack_animations[direction] = frames
     # ============================================================
     # Equipment / Stats
     # ============================================================
@@ -596,36 +630,23 @@ class PlayerNode(AnimatedNode):
             refresh="reset",
         )
 
-    def _update_sword_all_direction(self, dt: float) -> None:
-        """นับถอยหลังบัฟ sword_all_direction และคืนอาวุธเดิมเมื่อหมดเวลา"""
-        if self.sword_all_dir_timer <= 0:
+    # ============================================================
+    # Temporary weapon buff: Fire Magic
+    # ============================================================
+    def activate_magic_fire(self, item_id: str, duration: float) -> None:
+        """เปิดใช้เวทย์ไฟแบบมีเวลาจำกัด (ผ่าน BuffManager)"""
+        if getattr(self, "equipment", None) is None:
+            return
+        if not hasattr(self, "buff_manager") or self.buff_manager is None:
             return
 
-        # ถ้าระหว่างทางผู้เล่นเปลี่ยนอาวุธเอง -> ยกเลิก ไม่ revert ทับของใหม่
-        if getattr(self, "equipment", None) is not None:
-            current = self.equipment.main_hand
-            if getattr(self, "sword_all_direction_id", None) is not None:
-                if current != self.sword_all_direction_id:
-                    self.sword_all_dir_timer = 0.0
-                    self.sword_all_dir_prev_main_hand = None
-                    self.sword_all_direction_id = None
-                    self.temp_weapon_base_main_hand = None
-                    return
-
-        self.sword_all_dir_timer -= dt
-        if self.sword_all_dir_timer <= 0:
-            self.sword_all_dir_timer = 0.0
-
-            if getattr(self, "equipment", None) is not None:
-                base = self.temp_weapon_base_main_hand
-                if base is None:
-                    base = self.sword_all_dir_prev_main_hand
-                self.equipment.main_hand = base
-                self._recalc_stats_from_equipment()
-
-            self.sword_all_dir_prev_main_hand = None
-            self.sword_all_direction_id = None
-            self.temp_weapon_base_main_hand = None
+        self.buff_manager.apply_weapon_override(
+            self,
+            weapon_id=item_id,
+            duration=duration,
+            group="weapon_override",
+            refresh="reset",
+        )
 
     # ============================================================
     # Temporary weapon buff: Bow Power
@@ -937,6 +958,7 @@ class PlayerNode(AnimatedNode):
         if state == "attack" and getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
 
+            # 1) Bow
             if (
                 weapon
                 and weapon.item_type == "weapon"
@@ -951,6 +973,21 @@ class PlayerNode(AnimatedNode):
                     fallback_dir = diag_to_cardinal[direction]
                     frames = self.bow_attack_animations.get(fallback_dir)
 
+            # 2) Fire Magic
+            elif (
+                weapon
+                and weapon.item_type == "weapon"
+                and weapon.id == "fire_1"
+                and hasattr(self, "fire_attack_animations")
+            ):
+                # พยายามใช้ทิศตรง
+                frames = self.fire_attack_animations.get(direction)
+                
+                # fallback ทิศทแยง -> ทิศหลัก
+                if frames is None and direction in diag_to_cardinal:
+                     fallback_dir = diag_to_cardinal[direction]
+                     frames = self.fire_attack_animations.get(fallback_dir)
+                     
         # ---------- กรณีปกติ (ทุก state) ----------
         if frames is None:
             frames = self.animations.get((state, direction))
@@ -1308,6 +1345,97 @@ class PlayerNode(AnimatedNode):
         self.state = "cast"
         self.attack_timer = max(getattr(self, "attack_timer", 0.0), 0.25)
         self.shoot_timer = self.shoot_cooldown
+    # โจมตีด้วยเวทย์ไฟ 8 ทิศ
+    def cast_magic_fire(self, homing: bool = False) -> tuple[bool, str]:
+        if self.shoot_timer > 0:
+            return False, "ติดคูลดาวน์"
+
+        # ------------------------------------------------------------------
+        # ปรับทิศทางให้เป็น Isometric 25° (วงรี)
+        # ------------------------------------------------------------------
+        iso_deg = 25.0
+        k = math.sin(math.radians(iso_deg))
+        
+        # Speed ในโลก 3D (World Space)
+        # เนื่องจาก Transform 'x-y' จะขยาย scale ประมาณ 1.4 ถึง 2.0 เท่า
+        # เลยลด Base speed ลงจาก 550 เหลือ 300-400 เพื่อให้ Speed บนหน้าจอไม่อ็วร์เกินไป
+        # Max Screen Speed = world_speed * 2 (ทิศ 315/135) -> 300*2 = 600
+        # Min Screen Speed = world_speed * 0.84 (ทิศ 45/225) -> 300*0.84 = 252
+        world_speed = 320.0 
+
+        projectiles_data = [] # list of (direction, speed)
+        
+        # 8 ทิศรอบตัว (World Space: 0, 45, ... 315)
+        for i in range(8):
+            deg = i * 45
+            rad = math.radians(deg)
+            
+            # 1. Unit Vector ใน World Space
+            wx = math.cos(rad)
+            wy = math.sin(rad)
+            
+            # 2. Transform เป็น Screen Space (Isometric)
+            # สูตรเดียวกับ SlashEffectNode
+            sx = wx - wy
+            sy = (wx + wy) * k
+            
+            v_screen = pygame.Vector2(sx, sy)
+            
+            # ถ้า vector เป็น 0 (ไม่ควรเกิด) ให้ข้าม
+            if v_screen.length_squared() <= 0:
+                continue
+
+            # 3. คำนวณ Speed บนหน้าจอ
+            # ต้องคูณด้วย length ของ v_screen เพื่อให้ลูกไฟวิ่งเกาะรูปวงรี
+            screen_speed = world_speed * v_screen.length()
+            
+            # Direction ต้อง normalize เพื่อส่งให้ ProjectileNode
+            screen_dir = v_screen.normalize()
+            
+            projectiles_data.append((screen_dir, screen_speed))
+
+
+        # Base damage (อาจจะปรับตาม stats.magic ก็ได้)
+        base_damage = 40 + getattr(self.stats, "magic", 0) * 0.8
+        projectile_id = "fire"
+        trail = "crimson"
+        
+        if homing:
+            base_damage += 20
+            # ใช้รูปต่างกัน: fire2_01.png
+            projectile_id = "fire/fire2" 
+            trail = "plasma" # เปลี่ยนสี trail แยกความต่าง
+
+        packet = DamagePacket(
+            base=base_damage,
+            damage_type="magic",
+            scaling_attack=0.0,
+        )
+
+        for (d, spd) in projectiles_data:
+            ProjectileNode(
+                self,
+                self.rect.center,
+                d,
+                spd,
+                packet,
+                projectile_id, 
+                1.5 if homing else 1.0, # homing อยู่นานกว่าหน่อย
+                self.projectile_group,
+                self.game.all_sprites,
+                trail_theme=trail, 
+                homing=homing,
+                homing_turn_rate=4.5 # เลี้ยวไวประมาณนึง
+            )
+
+        # เล่นเสียงยิง (ถ้ามี)
+        if hasattr(self, "sfx_bow_shoot"):
+             self.sfx_bow_shoot.play()
+
+        # เปลี่ยนเป็น attack เพื่อให้เล่นเฟรม attack_fire_xxx
+        self.state = "attack" 
+        self.attack_timer = 0.3
+        self.shoot_timer = self.shoot_cooldown
         return True, "OK"
 
 
@@ -1389,6 +1517,21 @@ class PlayerNode(AnimatedNode):
             if not ok:
                 print(f"ใช้ magic_lightning_2 ไม่ได้ ({reason})")
             return
+
+        # ✅ ถ้าถือ fire_1 -> ยิงเวทย์ไฟ 8 ทิศ
+        if weapon and weapon.item_type == "weapon" and weapon.id == "fire_1":
+            ok, reason = self.cast_magic_fire(homing=False)
+            if not ok:
+                print(f"ใช้ fire_1 ไม่ได้ ({reason})")
+            return
+
+        # ✅ ถ้าถือ fire_2 -> ยิงเวทย์ไฟ 8 ทิศ + homing
+        if weapon and weapon.item_type == "weapon" and weapon.id == "fire_2":
+            ok, reason = self.cast_magic_fire(homing=True)
+            if not ok:
+                print(f"ใช้ fire_2 ไม่ได้ ({reason})")
+            return
+
 
         # ถ้ามี bow_xxx อยู่ที่มือหลัก -> ยิงระยะไกล
         if weapon and weapon.item_type == "weapon" and weapon.id.startswith("bow_"):

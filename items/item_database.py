@@ -138,6 +138,32 @@ class ItemDatabase:
             )
         )
 
+        #   assets/graphics/images/items/fire_01.png
+        self._register(
+            ItemBase(
+                id="fire_1",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="เวทย์ไฟระดับ 1",
+                description="เวทย์ไฟยิงศัตรู 8 ทิศทาง",
+                item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
+                max_stack=1,
+                icon_key="items/fire_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/fire_1.png",   # ใช้ใน inventory HUD
+            )
+        )
+
+        #   assets/graphics/images/items/fire2_01.png
+        self._register(
+            ItemBase(
+                id="fire_2",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="เวทย์ไฟระดับ 2",
+                description="เวทย์ไฟยิงศัตรูแบบติดตาม 8 ทิศทาง",
+                item_type="weapon",  # ✅ เปลี่ยนจาก weapon",
+                max_stack=1,
+                icon_key="items/fire2_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/fire_2.png",   # ใช้ใน inventory HUD
+            )
+        )
+
         # ---------- Shield / Armor ----------
         # ไอเท็มโล่
         # แนะนำไฟล์:

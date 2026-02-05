@@ -31,7 +31,7 @@ class GameApp:
             base_path="assets",
             sprite_scale=0.25,   # ขนาดตัวละคร / enemy
             tile_scale=1.0,      # ขนาด tile
-            projectile_scale=0.1,  # ลูกธนู
+            projectile_scale=0.2,  # ลูกธนู
             item_scale=0.2,        # ค่าเริ่มต้นของ items ทุกชนิด
             item_scale_overrides={
                 # ทำให้ bow_power เล็กลงหน่อย (เช่น 50% ของไฟล์)
