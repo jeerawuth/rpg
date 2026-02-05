@@ -120,10 +120,12 @@ class InventoryScene(BaseScene):
             return
 
         # ---------- เคสพิเศษ: ธนู Power = ไอเท็มกดใช้ ----------
-        if item.id in ("bow_power_1", "bow_power_2"):
+        if item.id in ("bow_power_1", "bow_power_2", "bow_power_3"):
             duration = 10.0
             if item.id == "bow_power_2":
                 duration = 20.0
+            elif item.id == "bow_power_3":
+                duration = 15.0
 
             stack.quantity -= 1
             if stack.quantity <= 0:

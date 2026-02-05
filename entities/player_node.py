@@ -486,8 +486,12 @@ class PlayerNode(AnimatedNode):
 
             # เผื่ออนาคตมี bow_power_2, bow_power_3
             elif weapon.id.startswith("bow_power_"):
-                self.stats.attack += 6
-                self.stats.crit_chance += 0.08
+                if weapon.id == "bow_power_3":
+                     self.stats.attack += 8
+                     self.stats.crit_chance += 0.10
+                else:
+                     self.stats.attack += 6
+                     self.stats.crit_chance += 0.08
 
         # ----- armor / shield -----
         armor_item = self.equipment.get_item("armor")
@@ -1457,9 +1461,10 @@ class PlayerNode(AnimatedNode):
         if getattr(self, "equipment", None) is not None:
             weapon = self.equipment.get_item("main_hand")
             if weapon:
-                # ถ้าเป็น bow_power_2 ให้ใช้ arrow2
                 if weapon.id == "bow_power_2":
                     projectile_id = "arrow2"
+                elif weapon.id == "bow_power_3":
+                    projectile_id = "arrow/arrow3"
                 # ถ้าอนาคตมี bow_power_3 ก็เพิ่ม elif ได้ที่นี่
 
         packet = DamagePacket(
@@ -1473,19 +1478,43 @@ class PlayerNode(AnimatedNode):
             trail_theme = "plasma"   # หรือ "crimson" / "arcane" / "holy"
         elif weapon and weapon.id == "bow_power_2":
             trail_theme = "holy"
+        elif weapon and weapon.id == "bow_power_3":
+            trail_theme = "storm"
 
-        ProjectileNode(
-            self,
-            self.rect.center,
-            direction,
-            650,
-            packet,
-            projectile_id,
-            1.5,
-            self.projectile_group,
-            self.game.all_sprites,
-            trail_theme=trail_theme,   # ✅ เพิ่มบรรทัดนี้
-        )
+        # กรณี bow_power_3 ยิง 3 ดอก
+        if weapon and weapon.id == "bow_power_3":
+            # 3 ทิศ: 0, -15, +15 degrees
+            angles = [0, -15, 15]
+            for angle in angles:
+                rotated_dir = direction.rotate(angle)
+                ProjectileNode(
+                    self,
+                    self.rect.center,
+                    rotated_dir,
+                    650,
+                    packet,
+                    projectile_id,
+                    1.5,
+                    self.projectile_group,
+                    self.game.all_sprites,
+                    trail_theme=trail_theme,
+                    homing=True,
+                    homing_turn_rate=3.5 # เลี้ยวพอประมาณ
+                )
+        else:
+            # ยิงปกติ 1 ดอก
+            ProjectileNode(
+                self,
+                self.rect.center,
+                direction,
+                650,
+                packet,
+                projectile_id,
+                1.5,
+                self.projectile_group,
+                self.game.all_sprites,
+                trail_theme=trail_theme,   # ✅ เพิ่มบรรทัดนี้
+            )
 
         # ให้ตัวละครเล่นท่า "โจมตี" ช่วงสั้น ๆ (เอาไว้เลือกเฟรม attack_arrow)
         self.state = "attack"

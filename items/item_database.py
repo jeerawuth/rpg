@@ -112,6 +112,19 @@ class ItemDatabase:
             )
         )
 
+        #   assets/graphics/images/items/bow_power3_01.png
+        self._register(
+            ItemBase(
+                id="bow_power_3",  # 👈 ให้ตรงกับที่ GameScene ใช้
+                name="ธนูระดับ 3",
+                description="ลูกธนู 3 ดอกพร้อมกัน",
+                item_type="weapon",
+                max_stack=1,
+                icon_key="items/bow_power3_01.png",  # เฟรมแรกของอนิเมชัน
+                ui_icon_key="ui/items/bow_power_3.png",   # ใช้ใน inventory HUD
+            )
+        )
+
         #   assets/graphics/images/items/magic_lightning_01.png
         self._register(
             ItemBase(
