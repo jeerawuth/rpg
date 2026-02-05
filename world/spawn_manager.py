@@ -23,37 +23,54 @@ class SpawnManager:
         # ✅ เก็บเอฟเฟ็กต์ที่กำลังเล่นอยู่ แยกตาม spawn_id
         self._active_effects: dict[int, BornEffectNode] = {}
 
+        import random  # Import at top or here if needed (better at top, but for replacing block here works)
+        
         spawn_id = 0
 
         for spawn in level_data.enemy_spawns:
-            spawn_id += 1
-
-            spawn_time = float(spawn.get("spawn_time", 0.0))
+            amount = spawn.get("amount", 1)
+            base_pos = tuple(spawn["pos"])
             enemy_type = spawn["type"]
-            pos = tuple(spawn["pos"])
+            base_spawn_time = float(spawn.get("spawn_time", 0.0))
 
-            # ถ้ากำหนดเวลาเกิด (>0) -> มี born_effect ก่อน
-            if spawn_time > 0.0:
-                effect_time = max(0.0, spawn_time - 1.5)
+            for i in range(amount):
+                spawn_id += 1
+                
+                # ถ้ามีหลายตัวอาจจะให้เวลา spawn ไล่เลี่ยกันนิดหน่อยก็ได้ (เช่น ห่างกัน 0.1s)
+                # หรือจะเกิดพร้อมกันแต่คนละตำแหน่งก็ได้
+                spawn_time = base_spawn_time + (i * 0.2) 
+
+                # คำนวณตำแหน่ง (ตัวแรกอยู่ที่เดิม ตัวถัดไปสุ่ม offset)
+                if i == 0:
+                    pos = base_pos
+                else:
+                    # offset +/- 16 pixels
+                    ox = random.randint(-16, 16)
+                    oy = random.randint(-16, 16)
+                    pos = (base_pos[0] + ox, base_pos[1] + oy)
+
+                # ถ้ากำหนดเวลาเกิด (>0) -> มี born_effect ก่อน
+                if spawn_time > 0.0:
+                    effect_time = max(0.0, spawn_time - 1.5)
+                    self._schedule.append({
+                        "time": effect_time,
+                        "kind": "born_effect",
+                        "type": enemy_type,
+                        "pos": pos,
+                        "spawned": False,
+                        "spawn_id": spawn_id,
+                    })
+
+                # enemy เกิด "หลัง effect จบจริง" (ไม่ต้องตรง spawn_time ก็ได้)
                 self._schedule.append({
-                    "time": effect_time,
-                    "kind": "born_effect",
+                    "time": spawn_time,
+                    "kind": "enemy",
                     "type": enemy_type,
                     "pos": pos,
                     "spawned": False,
                     "spawn_id": spawn_id,
+                    "wait_effect": (spawn_time > 0.0),
                 })
-
-            # enemy เกิด "หลัง effect จบจริง" (ไม่ต้องตรง spawn_time ก็ได้)
-            self._schedule.append({
-                "time": spawn_time,
-                "kind": "enemy",
-                "type": enemy_type,
-                "pos": pos,
-                "spawned": False,
-                "spawn_id": spawn_id,
-                "wait_effect": (spawn_time > 0.0),
-            })
 
         # ✅ กันบั๊กเรื่อง break (ในโค้ดเดิมคอมเมนต์บอกว่า sort แล้ว แต่จริง ๆ ยังไม่ sort)
         # และทำให้ born_effect มาก่อน enemy หากเวลาเท่ากัน

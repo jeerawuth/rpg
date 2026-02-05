@@ -192568,7 +192568,8 @@
         656,
         975
       ],
-      "spawn_time": 0
+      "spawn_time": 0,
+      "amount": 5
     },
     {
       "type": "spider",
