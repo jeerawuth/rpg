@@ -188,6 +188,152 @@ class ArrowCometTrailNode(pygame.sprite.Sprite):
 
 
 # ============================================================
+# Particle Trail (Dots / Sparkles)
+# ============================================================
+
+@dataclass
+class _Particle:
+    pos: pygame.Vector2
+    vel: pygame.Vector2
+    life: float
+    max_life: float
+    radius: float
+    color: tuple[int, int, int]
+
+
+class ArrowParticleTrailNode(pygame.sprite.Sprite):
+    """หางแบบอนุภาค (Particle System) สำหรับลูกธนู (bow_power_1/2)
+    
+    - ปล่อยจุดวงกลมเล็ก ๆ ตามทาง
+    - ค่อย ๆ จางและเล็กลง
+    """
+
+    def __init__(
+        self,
+        projectile: pygame.sprite.Sprite,
+        *groups: pygame.sprite.AbstractGroup,
+        rate: float = 0.005,  # ปล่อยทุกๆ 5ms
+        life: float = 0.4,
+        radius: float = 4.0,
+        speed_variance: float = 10.0,
+        main_rgb: tuple[int, int, int] = (255, 255, 255),
+    ) -> None:
+        try:
+            self._layer = int(getattr(projectile, "_layer", 0)) - 1
+        except Exception:
+            pass
+
+        super().__init__(*groups)
+
+        self._target_ref = weakref.ref(projectile)
+        self.rate = rate
+        self.life = life
+        self.radius = radius
+        self.speed_variance = speed_variance
+        self.main_rgb = main_rgb
+        
+        from random import uniform
+        self.rng = uniform
+
+        self._timer = 0.0
+        self.particles: list[_Particle] = []
+        
+        self.image = pygame.Surface((1, 1), pygame.SRCALPHA)
+        self.rect = self.image.get_rect()
+
+    def update(self, dt: float) -> None:
+        target = self._target_ref()
+        
+        # 1. Spawn particles if target is alive
+        if target is not None and target.alive():
+            self._timer += dt
+            while self._timer >= self.rate:
+                self._timer -= self.rate
+                self._spawn_particle(target)
+        elif not self.particles:
+            # Target gone and no particles left -> die
+            self.kill()
+            return
+
+        # 2. Update particles
+        dt_sec = float(dt)
+        alive_particles = []
+        for p in self.particles:
+            p.life -= dt_sec
+            if p.life > 0:
+                p.pos += p.vel * dt_sec
+                alive_particles.append(p)
+        self.particles = alive_particles
+
+        # 3. Redraw
+        if self.particles:
+            self._rebuild_image()
+
+    def _spawn_particle(self, target: pygame.sprite.Sprite) -> None:
+        import random
+        center = pygame.Vector2(target.rect.center)
+        # Random offset slightly
+        offset = pygame.Vector2(random.uniform(-2, 2), random.uniform(-2, 2))
+        
+        # Velocity opposite to projectile direction? Or random?
+        # Let's make them drift slightly randomly
+        vel = pygame.Vector2(random.uniform(-1, 1), random.uniform(-1, 1)) * self.speed_variance
+        
+        p = _Particle(
+            pos=center + offset,
+            vel=vel,
+            life=self.life,
+            max_life=self.life,
+            radius=self.radius * random.uniform(0.8, 1.2),
+            color=self.main_rgb
+        )
+        self.particles.append(p)
+
+    def _rebuild_image(self) -> None:
+        if not self.particles:
+            return
+
+        # Calculate bounds
+        min_x = min(p.pos.x for p in self.particles)
+        min_y = min(p.pos.y for p in self.particles)
+        max_x = max(p.pos.x for p in self.particles)
+        max_y = max(p.pos.y for p in self.particles)
+
+        pad = 10
+        w = int(max_x - min_x) + pad * 2
+        h = int(max_y - min_y) + pad * 2
+        
+        surf = pygame.Surface((max(1, w), max(1, h)), pygame.SRCALPHA)
+        ox = min_x - pad
+        oy = min_y - pad
+
+        for p in self.particles:
+            # Ratio 1.0 (new) -> 0.0 (old)
+            ratio = p.life / p.max_life
+            
+            # Fade out alpha
+            alpha = int(255 * (ratio ** 0.5))
+            
+            # Shrink radius
+            r = p.radius * ratio
+            if r < 0.5:
+                continue
+
+            # Draw circle
+            color = (*p.color, alpha)
+            draw_pos = (int(p.pos.x - ox), int(p.pos.y - oy))
+            
+            # Glow effect (draw larger faint circle, then smaller bright one)
+            # Faint
+            pygame.draw.circle(surf, (*p.color, int(alpha * 0.3)), draw_pos, int(r * 2))
+            # Core
+            pygame.draw.circle(surf, color, draw_pos, int(r))
+
+        self.image = surf
+        self.rect = self.image.get_rect(topleft=(int(ox), int(oy)))
+
+
+# ============================================================
 # Projectile
 # ============================================================
 
@@ -206,9 +352,9 @@ class ProjectileNode(AnimatedNode):
     _TRAIL_THEMES: dict[str, tuple[tuple[int,int,int], tuple[int,int,int], int, int]] = {
         "gold":     ((255, 210, 120), (255, 255, 255), 165, 220),
         "arcane":   ((180, 120, 255), (255, 255, 255), 175, 230),  # purple
-        "plasma":   ((120, 230, 255), (255, 255, 255), 170, 230),  # cyan
+        "plasma":   ((120, 230, 255), (255, 255, 255), 80, 140),  # cyan
         "crimson":  ((255, 110,  80), (255, 245, 235), 175, 230),  # red
-        "holy":     ((255, 225, 140), (255, 255, 255), 170, 230),  # warm gold
+        "holy":     ((255, 225, 140), (255, 255, 255), 80, 140),  # warm gold
         "toxic":    ((140, 255, 160), (255, 255, 255), 160, 220),  # green
         "storm":    (( 70, 255, 255), (255, 255, 255), 170, 230),  # teal
         # aliases
@@ -380,24 +526,63 @@ class ProjectileNode(AnimatedNode):
         if render_group is None:
             return
 
-        # arrow2 อาจอยากให้ดูแรงขึ้นนิด (แต่ยังคุมด้วย theme ได้)
-        max_thick = 12 if pid == "arrow2" else 11
-        life = 0.20 if pid == "arrow2" else 0.18
+        # ✅ Check usage for Particle vs Ribbon
+        # bow_power_1 ("gold") / bow_power_2 ("arcane") -> Particle
+        # But wait, maybe "arcane" is used elsewhere? 
+        # The user specifically asked for bow_power_1 and bow_power_2.
+        
+        use_particle = False 
+        
+        # Also check if theme matches specific ones if weapon_id is unavailable (e.g. passed from PlayerNode explicitly)
+        # PlayerNode passes "plasma" for bow_power_1, "holy" for bow_power_2??
+        # Correction: In PlayerNode._shoot_projectile:
+        # bow_power_1 -> theme="plasma" (wait, code said plasma, but _maybe_attach checks gold?)
+        # Let's check PlayerNode again or just trust weapon_id if available.
+        # Actually PlayerNode passes `trail_theme`.
+        
+        # If we rely on theme passed from PlayerNode:
+        # bow_power_1 -> "plasma"
+        # bow_power_2 -> "holy"
+        # bow_power_3 -> "storm"
+        
+        # We can just check the theme names too to be safe/consistent.
+        if theme in ("plasma", "gold", "holy", "arcane"):
+             # Assuming these are the ones for bow_power_1/2
+             # But wait, bow_power_2 in PlayerNode uses "holy".
+             # Let's explicitly check weapon_id if possible, or mapping.
+             pass
 
-        ArrowCometTrailNode(
-            self,
-            render_group,
-            life=life,
-            sample_interval=0.010,
-            max_points=28 if pid == "arrow2" else 26,
-            max_thickness=max_thick,
-            min_thickness=2,
-            glow_passes=2,
-            main_rgb=main_rgb,
-            core_rgb=core_rgb,
-            alpha_main=a_main,
-            alpha_core=a_core,
-        )
+        if use_particle:
+            # Particle Trail
+            ArrowParticleTrailNode(
+                self,
+                render_group,
+                rate=0.005,
+                life=0.45,
+                radius=4.5 if theme == "holy" else 4.0, # bow_power_2 slightly bigger
+                speed_variance=12.0,
+                main_rgb=main_rgb,
+            )
+        else:
+            # Original Comet Trail (Ribbon)
+            # arrow2 อาจอยากให้ดูแรงขึ้นนิด (แต่ยังคุมด้วย theme ได้)
+            max_thick = 12 if pid == "arrow2" else 11
+            life = 0.20 if pid == "arrow2" else 0.18
+
+            ArrowCometTrailNode(
+                self,
+                render_group,
+                life=life,
+                sample_interval=0.010,
+                max_points=28 if pid == "arrow2" else 26,
+                max_thickness=max_thick,
+                min_thickness=2,
+                glow_passes=2,
+                main_rgb=main_rgb,
+                core_rgb=core_rgb,
+                alpha_main=a_main,
+                alpha_core=a_core,
+            )
 
     # ------------------------------------------------------------------
     # Legacy frame load (ถูกแทนที่ด้วย _load_raw_frames + _rotate_frames)

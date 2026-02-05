@@ -102046,8 +102046,8 @@
     {
       "type": "slime_green",
       "pos": [
-        556,
-        875
+        456,
+        675
       ],
       "spawn_time": 5,
       "amount": 3
@@ -102055,8 +102055,8 @@
     {
       "type": "slime_green",
       "pos": [
-        456,
-        775
+        356,
+        575
       ],
       "spawn_time": 10
     },
@@ -102064,7 +102064,7 @@
       "type": "slime_green",
       "pos": [
         556,
-        875
+        675
       ],
       "spawn_time": 15
     },
@@ -102072,7 +102072,7 @@
       "type": "goblin",
       "pos": [
         456,
-        675
+        625
       ],
       "spawn_time": 15
     },
@@ -102088,7 +102088,7 @@
       "type": "boss_orc",
       "pos": [
         556,
-        875
+        775
       ],
       "spawn_time": 20
     },

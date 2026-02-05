@@ -192750,7 +192750,7 @@
   ],
   "item_spawns": [
     {
-      "item_id": "bow_power_3",
+      "item_id": "fire_1",
       "pos": [
         1076,
         376
@@ -192758,12 +192758,12 @@
       "amount": 1
     },
     {
-      "item_id": "fire_2",
+      "item_id": "bow_power_3",
       "pos": [
         1276,
         456
       ],
-      "amount": 1
+      "amount": 3
     },
     {
       "item_id": "magic_lightning_2",
@@ -192774,7 +192774,7 @@
       "amount": 1
     },
     {
-      "item_id": "magic_lightning",
+      "item_id": "fire_2",
       "pos": [
         956,
         876
