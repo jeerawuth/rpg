@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pygame
 
-from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WINDOW_TITLE
+from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WINDOW_TITLE, FULLSCREEN
 from .event_bus import EventBus
 from .resource_manager import ResourceManager
 from .audio_manager import AudioManager
@@ -17,7 +17,12 @@ class GameApp:
         pygame.init()
         pygame.mixer.init()
 
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        flags = 0
+        if FULLSCREEN:
+            # ใช้ FULLSCREEN | SCALED เพื่อให้ปรับความละเอียดตามจอที่รองรับอัตโนมัติ
+            flags = pygame.FULLSCREEN | pygame.SCALED
+        
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
         pygame.display.set_caption(WINDOW_TITLE)
 
         self.clock = pygame.time.Clock()
