@@ -15,6 +15,10 @@ class MainMenuScene(BaseScene):
         self.title_font = self.game.resources.load_font(UI_FONT_PATH, 42)
         self.menu_font = self.game.resources.load_font(UI_FONT_PATH, 25)
 
+        # ---------- ตัวเลือก Player ----------
+        # (ย้ายไป OptionsScene แล้ว)
+        # เราจะใช้ self.game.selected_player_type แทน
+
     def handle_events(self, events) -> None:
         from .game_scene import GameScene  # import ภายในกันวงกลม
         from .preload_scene import PreloadScene
@@ -23,11 +27,17 @@ class MainMenuScene(BaseScene):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     # start game (รอบแรกจะโหลด asset เยอะ ให้ผ่านหน้าโหลดก่อน)
+                    # ใช้ self.game.selected_player_type ที่เลือกจาก Options
+                    selected_type = getattr(self.game, "selected_player_type", "knight")
+                    
                     self.game.scene_manager.set_scene(
                         PreloadScene(
                             self.game,
                             level_id="level01",
-                            next_scene_factory=lambda: GameScene(self.game),
+                            next_scene_factory=lambda: GameScene(
+                                self.game, 
+                                player_type=selected_type
+                            ),
                             items_per_frame=2,
                             title="Loading...",
                             note=" ",

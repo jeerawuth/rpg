@@ -53,6 +53,9 @@ class GameApp:
         self.audio = AudioManager(self.resources)
         self.scene_manager = SceneManager(self)
 
+        # Global State
+        self.selected_player_type: str = "knight"
+
     def quit(self) -> None:
         self.running = False
 

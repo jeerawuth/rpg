@@ -40,7 +40,8 @@ class GameScene(BaseScene):
         game,
         level_id: str = "level01",
         inventory_data: list | None = None,
-        equipment_data: dict | None = None
+        equipment_data: dict | None = None,
+        player_type: str | None = None,
     ) -> None:
         super().__init__(game)
         self.font = self.game.resources.load_font(UI_FONT_HUD_PATH, 22)
@@ -76,6 +77,12 @@ class GameScene(BaseScene):
 
 
         # ---------- PLAYER ----------
+        # ถ้าไม่ได้ระบุ player_type มา ให้ใช้จาก Global State (GameApp)
+        # ถ้าไม่มี Global State ให้ใช้ "knight" เป็น default
+        actual_player_type = player_type
+        if actual_player_type is None:
+             actual_player_type = getattr(self.game, "selected_player_type", "knight")
+
         player_spawn = self.level_data.player_spawn
         self.player = PlayerNode(
             self.game,
@@ -84,6 +91,7 @@ class GameScene(BaseScene):
             self.all_sprites,
             inventory_data=inventory_data,
             equipment_data=equipment_data,
+            player_type=actual_player_type,
         )
 
         # ให้ enemy / ระบบอื่น ๆ อ้างถึง player ได้ผ่าน self.game
@@ -392,7 +400,8 @@ class GameScene(BaseScene):
                             self.game, 
                             level_id=next_id, 
                             inventory_data=inventory_data, 
-                            equipment_data=equipment_data
+                            equipment_data=equipment_data,
+                            player_type=self.player.player_type
                         )
                     )
                 else:

@@ -11,6 +11,7 @@ from .animated_node import AnimatedNode
 from combat.damage_system import Stats, DamagePacket, DamageResult, compute_damage
 from combat.status_effect_system import StatusEffectManager
 from config.settings import PLAYER_SPEED
+from config.player_config import PLAYER_CONFIG
 from .damage_number_node import DamageNumberNode
 from .projectile_node import ProjectileNode
 from entities.slash_effect_node import SlashEffectNode
@@ -123,10 +124,21 @@ class PlayerNode(AnimatedNode):
         *groups,
         inventory_data: list | None = None,
         equipment_data: dict | None = None,
+        player_type: str = "knight",
     ) -> None:
         self.game = game
+        self.player_type = player_type
         self.projectile_group = projectile_group
 
+        # ---------- Load Config first (moved up for scale) ----------
+        p_cfg = PLAYER_CONFIG.get(self.player_type, PLAYER_CONFIG.get("default"))
+        if not p_cfg:
+             p_cfg = PLAYER_CONFIG["default"]
+        
+        self.config_data = p_cfg  # Store for later
+        self.speed = p_cfg.get("speed", 220)
+        self.scale = p_cfg.get("scale", 1.0)
+        
         # ---------- SFX (ใช้ ResourceManager โหลดเสียง) ----------
         self.sfx_slash = self.game.resources.load_sound("sfx/slash.wav")
         self.sfx_bow_shoot = self.game.resources.load_sound("sfx/bow_shoot.wav")
@@ -236,16 +248,13 @@ class PlayerNode(AnimatedNode):
 
 
         # ---------- Combat stats (RPG style) ----------
-        self.stats = Stats(
-            max_hp=100,
-            hp=100,
-            attack=20,
-            magic=5,
-            armor=5,
-            resistances={"physical": 0.0},
-            crit_chance=0.1,
-            crit_multiplier=1.7,
-        )
+        # ---------- Combat stats (RPG style) ----------
+        # Config loaded at top of __init__
+        
+        # Copy stats (to avoid mutating the config directly)
+        base_stats = self.config_data.get("stats")
+        import copy
+        self.stats = copy.deepcopy(base_stats)
 
         # สำเนาค่า base stats สำหรับ recalculation จาก equipment
         self.base_stats = Stats(
@@ -258,6 +267,7 @@ class PlayerNode(AnimatedNode):
             crit_chance=self.stats.crit_chance,
             crit_multiplier=self.stats.crit_multiplier,
         )
+        print(f"[DEBUG] Loaded: {self.player_type}, Speed: {self.speed}, Scale: {self.scale}, HP: {self.stats.max_hp}")
 
         # จัดการ buff/debuff
         self.status = StatusEffectManager(self)
@@ -301,7 +311,7 @@ class PlayerNode(AnimatedNode):
         self._recalc_stats_from_equipment()
 
         # ---------- Movement / collision ----------
-        self.move_speed = PLAYER_SPEED
+        self.move_speed = self.speed
         self.collision_rects: list[pygame.Rect] = []
 
         # ---------- Shoot cooldown ----------
@@ -372,9 +382,13 @@ class PlayerNode(AnimatedNode):
         frames: list[pygame.Surface] = []
         index = 1
         while True:
-            rel_path = f"player/{state}/{state}_{direction}_{index:02d}.png"
+            rel_path = f"player/{self.player_type}/{state}/{state}_{direction}_{index:02d}.png"
             try:
                 surf = self.game.resources.load_image(rel_path)
+                if self.scale != 1.0:
+                    w = int(surf.get_width() * self.scale)
+                    h = int(surf.get_height() * self.scale)
+                    surf = pygame.transform.scale(surf, (w, h))
             except Exception:
                 break
             frames.append(surf)
@@ -396,9 +410,13 @@ class PlayerNode(AnimatedNode):
             frames: list[pygame.Surface] = []
             index = 1
             while True:
-                rel_path = f"player/attack/attack_arrow_{direction}_{index:02d}.png"
+                rel_path = f"player/{self.player_type}/attack/attack_arrow_{direction}_{index:02d}.png"
                 try:
                     surf = self.game.resources.load_image(rel_path)
+                    if self.scale != 1.0:
+                        w = int(surf.get_width() * self.scale)
+                        h = int(surf.get_height() * self.scale)
+                        surf = pygame.transform.scale(surf, (w, h))
                 except Exception:
                     break
                 frames.append(surf)
@@ -428,9 +446,13 @@ class PlayerNode(AnimatedNode):
             frames: list[pygame.Surface] = []
             index = 1
             while True:
-                rel_path = f"player/attack/attack_fire_{direction}_{index:02d}.png"
+                rel_path = f"player/{self.player_type}/attack/attack_fire_{direction}_{index:02d}.png"
                 try:
                     surf = self.game.resources.load_image(rel_path)
+                    if self.scale != 1.0:
+                        w = int(surf.get_width() * self.scale)
+                        h = int(surf.get_height() * self.scale)
+                        surf = pygame.transform.scale(surf, (w, h))
                 except Exception:
                     break
                 frames.append(surf)
