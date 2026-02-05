@@ -34,7 +34,13 @@ class GameScene(BaseScene):
     # (ไฟล์ต้องอยู่ใน assets/sounds/music/)
     MUSIC = MusicCue(intro="battle_intro_5s.wav", loop="battle_loop_30s.wav", volume=0.3, fade_ms=120, fadeout_ms=120)
 
-    def __init__(self, game, level_id: str = "level01") -> None:
+    def __init__(
+        self,
+        game,
+        level_id: str = "level01",
+        inventory_data: list | None = None,
+        equipment_data: dict | None = None
+    ) -> None:
         super().__init__(game)
         self.font = self.game.resources.load_font(UI_FONT_HUD_PATH, 22)
 
@@ -75,6 +81,8 @@ class GameScene(BaseScene):
             player_spawn,
             self.projectiles,
             self.all_sprites,
+            inventory_data=inventory_data,
+            equipment_data=equipment_data,
         )
 
         # ให้ enemy / ระบบอื่น ๆ อ้างถึง player ได้ผ่าน self.game
@@ -350,9 +358,38 @@ class GameScene(BaseScene):
 
                 if next_id:
                     # มีด่านถัดไป -> โหลด GameScene ใหม่ด้วย level_id ที่ JSON บอก
+                    
+                    # ----------------------------------------------------
+                    # [FIX] เคลียร์บัฟอาวุธชั่วคราว (เช่น sword_all_direction)
+                    # เพื่อให้ equipment.main_hand กลับเป็นอาวุธหลักเดิม
+                    # ----------------------------------------------------
+                    if hasattr(self.player, "buff_manager") and self.player.buff_manager:
+                        # clear_group จะเรียก on_remove ซึ่งจะ revert equipment ให้เอง
+                        self.player.buff_manager.clear_group(self.player, "weapon_override")
+                        self.player.buff_manager.clear_group(self.player, "armor_override")
+
+                    # EXTRACT Inventory / Equipment
+                    inventory_data = None
+                    if hasattr(self.player, "inventory") and self.player.inventory:
+                        inventory_data = self.player.inventory.slots
+                    
+                    equipment_data = None
+                    if hasattr(self.player, "equipment") and self.player.equipment:
+                        # สร้าง dict จาก Equipment dataclass หรือดึงค่าตรงๆ
+                        equipment_data = {
+                            "main_hand": self.player.equipment.main_hand,
+                            "off_hand": self.player.equipment.off_hand,
+                            "armor": self.player.equipment.armor,
+                        }
+
                     from .game_scene import GameScene
                     self.game.scene_manager.set_scene(
-                        GameScene(self.game, level_id=next_id)
+                        GameScene(
+                            self.game, 
+                            level_id=next_id, 
+                            inventory_data=inventory_data, 
+                            equipment_data=equipment_data
+                        )
                     )
                 else:
                     # ไม่มีด่านถัดไปแล้ว -> กลับ Lobby (หรือ Main Menu)

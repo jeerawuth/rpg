@@ -121,6 +121,8 @@ class PlayerNode(AnimatedNode):
         pos: tuple[int, int],
         projectile_group: pygame.sprite.Group,
         *groups,
+        inventory_data: list | None = None,
+        equipment_data: dict | None = None,
     ) -> None:
         self.game = game
         self.projectile_group = projectile_group
@@ -263,14 +265,32 @@ class PlayerNode(AnimatedNode):
         # ---------- Inventory / Equipment ----------
         if Inventory is not None:
             self.inventory = Inventory(size=20)
-            # ตัวอย่างของเริ่มต้น
-            # self.inventory.add_item("potion_small", 5)
-            # self.inventory.add_item("sword_basic", 1)
+            # Restore inventory if data is provided
+            if inventory_data is not None:
+                self.inventory.slots = inventory_data
+            else:
+                # ตัวอย่างของเริ่มต้น (เฉพาะตอนเริ่มเกมใหม่จริง ๆ)
+                # self.inventory.add_item("potion_small", 5)
+                # self.inventory.add_item("sword_basic", 1)
+                pass 
         else:
             self.inventory = None
 
         if Equipment is not None:
             self.equipment = Equipment()
+            # Restore equipment if data is provided
+            if equipment_data is not None:
+                # equipment_data น่าจะเป็น dict { "main_hand": "...", ... }
+                # หรือตัว object Equipment เอง? เพื่อความง่ายใช้ dict หรือ copy attribute
+                if isinstance(equipment_data, dict):
+                    self.equipment.main_hand = equipment_data.get("main_hand")
+                    self.equipment.off_hand = equipment_data.get("off_hand")
+                    self.equipment.armor = equipment_data.get("armor")
+                else:
+                    # ถ้าส่งมาเป็น object Equipment
+                    self.equipment.main_hand = getattr(equipment_data, "main_hand", None)
+                    self.equipment.off_hand = getattr(equipment_data, "off_hand", None)
+                    self.equipment.armor = getattr(equipment_data, "armor", None)
         else:
             self.equipment = None
 
