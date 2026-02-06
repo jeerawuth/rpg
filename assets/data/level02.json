@@ -1,7 +1,7 @@
 {
   "id": "level02",
   "next_level": "level03",
-  "tileset": "overworld_level_02.png",
+  "tileset": "overworld_level_02.jpg",
   "tile_size": 32,
   "width": 66,
   "height": 44,
@@ -102134,6 +102134,14 @@
         676
       ],
       "amount": 1
+    },
+    {
+      "item_id": "fire_2",
+      "pos": [
+        970,
+        500
+      ],
+      "amount": 3
     }
   ],
   "decor_spawns": [

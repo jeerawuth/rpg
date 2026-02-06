@@ -14,8 +14,11 @@ from .scene_manager import SceneManager
 
 class GameApp:
     def __init__(self) -> None:
+        # Pre-initialize mixer with larger buffer to prevent sound cracking/distortion
+        # frequency=44100, size=-16, channels=2, buffer=2048
+        pygame.mixer.pre_init(44100, -16, 2, 2048)
         pygame.init()
-        pygame.mixer.init()
+        # pygame.mixer.init() is handled by pygame.init() using pre_init settings
 
         flags = 0
         if FULLSCREEN:
@@ -24,6 +27,9 @@ class GameApp:
         
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
         pygame.display.set_caption(WINDOW_TITLE)
+
+        # Hide the system cursor for immersion
+        pygame.mouse.set_visible(False)
 
         self.clock = pygame.time.Clock()
         self.running = True
