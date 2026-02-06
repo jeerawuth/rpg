@@ -102,12 +102,9 @@ class InventoryScene(BaseScene):
 
         # ---------- เคสพิเศษ: ดาบรอบทิศทาง = ไอเท็มกดใช้ ----------
         if item.id in ("sword_all_direction", "sword_all_direction_2"):
-            duration = 10.0
-            item_name = "All Direction Sword"
-
-            if item.id == "sword_all_direction_2":
-                duration = 20.0
-                item_name = item.name
+            # ดึงเวลาจาก Database (ถ้าไม่มีใส่ default ไว้ 10.0)
+            duration = getattr(item, "duration", 10.0)
+            item_name = item.name
 
             stack.quantity -= 1
             if stack.quantity <= 0:
@@ -120,12 +117,8 @@ class InventoryScene(BaseScene):
             return
 
         # ---------- เคสพิเศษ: ธนู Power = ไอเท็มกดใช้ ----------
-        if item.id in ("bow_power_1", "bow_power_2", "bow_power_3"):
-            duration = 10.0
-            if item.id == "bow_power_2":
-                duration = 20.0
-            elif item.id == "bow_power_3":
-                duration = 15.0
+        if item.id.startswith("bow_power_"):
+            duration = getattr(item, "duration", 10.0)
 
             stack.quantity -= 1
             if stack.quantity <= 0:
@@ -138,11 +131,8 @@ class InventoryScene(BaseScene):
             return
 
         # ---------- เคสพิเศษ: สายฟ้า ----------
-        if item.id in ("magic_lightning", "magic_lightning_2"):
-            # magic_lightning_2 เป็นแบบ auto tick (ถ้าคุณทำไว้แล้ว)
-            duration = 10.0
-            if item.id == "magic_lightning_2":
-                duration = 5.0
+        if item.id.startswith("magic_lightning"):
+            duration = getattr(item, "duration", 10.0)
 
             stack.quantity -= 1
             if stack.quantity <= 0:
@@ -156,11 +146,8 @@ class InventoryScene(BaseScene):
         
 
         # ---------- เคสพิเศษ: เกราะ ----------
-        if item.id in ("shield_1", "shield_2"):
-            # shield 
-            duration = 10.0
-            if item.id == "shield_2":
-                duration = 15.0
+        if item.id.startswith("shield_"):
+            duration = getattr(item, "duration", 10.0)
 
             stack.quantity -= 1
             if stack.quantity <= 0:
@@ -173,10 +160,8 @@ class InventoryScene(BaseScene):
             return
 
         # ---------- เคสพิเศษ: เวทย์ไฟ ----------
-        if item.id in ("fire_1", "fire_2"):
-            duration = 15.0 # สกิลไฟ 1 ให้อยู่นานหน่อย
-            if item.id == "fire_2":
-                duration = 10.0 # สกิลไฟ 2 (homing) ให้แค่ 10 วิ
+        if item.id.startswith("fire_"):
+            duration = getattr(item, "duration", 15.0)
             
             stack.quantity -= 1
             if stack.quantity <= 0:

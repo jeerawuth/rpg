@@ -331,7 +331,7 @@ class PlayerNode(AnimatedNode):
         self.sword_all_dir_prev_main_hand: str | None = None
 
         # ----- Magic lightning cooldown -----
-        self.magic_lightning_cooldown = 1.0
+        self.magic_lightning_cooldown = 0.5
         self.magic_lightning_timer = 0.0
 
         # ----- Magic lightning buff duration -----

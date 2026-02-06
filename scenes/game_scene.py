@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import pygame
+import pygame
+from pygame import gfxdraw
+import math
 
 from .base_scene import BaseScene
 from core.audio_manager import MusicCue
@@ -178,6 +181,11 @@ class GameScene(BaseScene):
         self.player_contact_cooldown = 0.5  # วินาทีที่กันชนซ้ำ
         self.player_contact_timer = 0.0
 
+        # ---------- HUD INDICATORS STATE ----------
+        self.latest_consumable_id: str | None = None
+        self.consumable_display_timer: float = 0.0
+        self.consumable_display_duration: float = 2.0  # โชว์ 2 วินาทีแล้วหายไป
+
     # ---------- Helper: เลือกสีแท่ง HP ตามสัดส่วน ----------
     def _get_hp_color(self, ratio: float) -> tuple[int, int, int]:
         """
@@ -352,6 +360,12 @@ class GameScene(BaseScene):
     # ---------- UPDATE ----------
     def update(self, dt: float) -> None:
         
+        # Update Consumable Display Timer
+        if self.consumable_display_timer > 0:
+            self.consumable_display_timer -= dt
+            if self.consumable_display_timer < 0:
+                self.consumable_display_timer = 0.0
+
         # เช็คเกมโอเวอร์
         if self.player.is_dead and not self.game_over_triggered:
             pygame.mixer.stop()
@@ -475,6 +489,15 @@ class GameScene(BaseScene):
 
                     if leftover > 0:
                         self.game.add_log("กระเป๋าเต็ม! เก็บไอเท็มบางส่วนไม่ได้")
+
+
+            # check consumable trigger
+            # ถ้าเป็น consumable และถูกใช้ทันที (used_instant=True) หรือแม้แต่เก็บเข้ากระเป๋า
+            # ตามโจทย์ "item_type='consumable' ให้แสดงแว็บเดียวแล้วหายไป"
+            # เราจะเช็คว่าเป็น consumable หรือไม่
+            if item_node.item and getattr(item_node.item, "item_type", "") == "consumable":
+                 self.latest_consumable_id = item_node.item_id
+                 self.consumable_display_timer = self.consumable_display_duration
 
             # 🔊 เล่นเสียงเก็บไอเท็ม
             if hasattr(self.player, "sfx_item_pickup"):
@@ -616,86 +639,68 @@ class GameScene(BaseScene):
         weapon_name = getattr(weapon_item, "name", None) or (str(weapon_id) if weapon_id else "-")
         armor_name = getattr(armor_item, "name", None) or (str(armor_id) if armor_id else "-")
 
-        lines = [
-            # "Game Scene (Camera + Tilemap + Combat)",
-            # "WASD - Move | SPACE - Attack | I - Inventory",
-            f"ระดับพลังชีวิต: {int(self.player.stats.hp)}/{int(self.player.stats.max_hp)}",
-            f"จำนวนศัตรู: {len(self.enemies.sprites())}",
-            f"อาวุธ: {weapon_name}",
-            f"เกราะ: {armor_name}",
-        ]
-
-        # --- item buff countdown (BuffManager) ---
-        bm = getattr(self.player, "buff_manager", None)
-        effect_lines = []
-        if bm is not None and hasattr(bm, "effects"):
-            try:
-                effects = list(bm.effects)
-            except Exception:
-                effects = []
-            for eff in effects:
-                rem = float(getattr(eff, "remaining", 0.0) or 0.0)
-                if rem <= 0.0:
-                    continue
-
-                spec = getattr(eff, "spec", None)
-                eid = getattr(spec, "id", "") if spec is not None else ""
-                group = getattr(spec, "group", "") if spec is not None else ""
-
-                # แสดงเฉพาะบัฟที่เกี่ยวกับ "ไอเท็ม/อาวุธ/เกราะ"
-                if not (
-                    str(eid).startswith(("weapon_override:", "armor_override:", "magic_lightning_2"))
-                    or str(group) in ("weapon_override", "armor_override", "magic_lightning_2")
-                ):
-                    continue
-
-                label = str(eid) if eid else "buff"
-                prefix = ""
-                item_id = None
-
-                if ":" in label:
-                    prefix, item_id = label.split(":", 1)
-                else:
-                    item_id = label
-
-                # พยายามแปลงเป็นชื่อไอเท็มจาก database
-                item_name = None
-                if item_id:
-                    item = ITEM_DB.try_get(str(item_id))
-                    if item is not None:
-                        item_name = getattr(item, "name", None)
-
-                if prefix == "weapon_override":
-                    pretty = f"Weapon Buff: {item_name or item_id}"
-                elif prefix == "armor_override":
-                    pretty = f"Armor Buff: {item_name or item_id}"
-                else:
-                    pretty = f"Buff: {item_name or item_id}"
-
-                effect_lines.append(f"{pretty}: {rem:0.1f}s")
-
-        if effect_lines:
-            # กัน HUD ยาวเกินไป
-            lines.extend(effect_lines[:3])
-            if len(effect_lines) > 3:
-                lines.append(f"(+{len(effect_lines) - 3} more buffs)")
+        # --- HUD แบ่ง 2 ฝั่ง ---
+        
+        # 1. มุมขวาบน (HP + Enemies)
+        hp_val = int(self.player.stats.hp)
+        max_hp_val = int(self.player.stats.max_hp)
+        hp_text = f"ระดับพลังชีวิต: {hp_val}/{max_hp_val}"
+        
+        # ถ้า HP < 25 ให้ตัวหนังสือสีแดง
+        if hp_val < 25:
+            line_hp_entry = (hp_text, (255, 50, 50))
         else:
-            lines.append("Item Buff: -")
+            line_hp_entry = hp_text
 
-        # (Old log location removed)
-
-        # ทำให้ HUD อ่านชัดทุกฉาก: พื้นหลังดำโปร่ง 10% + ตัวหนังสือขาว + เงา
+        lines_right = [
+            line_hp_entry,
+            f"จำนวนศัตรู: {len(self.enemies.sprites())}",
+        ]
+        
+        # คำนวณความกว้างเพื่อจัดชิดขวา
+        max_w = 0
+        for line in lines_right:
+            # support tuple
+            txt = line[0] if isinstance(line, tuple) else line
+            w = self.font.size(txt)[0]
+            if w > max_w:
+                max_w = w
+        
+        padding = 10
+        panel_w = max_w + (padding * 2)
+        top_right_x = SCREEN_WIDTH - panel_w - 16
+        
         self.draw_text_block(
             surface,
-            lines,
-            (16, 16),
+            lines_right,
+            (top_right_x, 16),
             self.font,
-            padding=10,
+            padding=padding,
             line_gap=4,
             panel_alpha=self.HUD_BG_ALPHA,
             text_color=self.HUD_TEXT_COLOR,
             shadow=True,
         )
+
+        # 2. มุมซ้ายบน (Weapon + Armor) - ซ่อนถ้าไม่มี
+        lines_left = []
+        if weapon_name and weapon_name != "-":
+             lines_left.append(f"อาวุธ: {weapon_name}")
+        if armor_name and armor_name != "-":
+             lines_left.append(f"เกราะ: {armor_name}")
+        
+        if lines_left:
+            self.draw_text_block(
+                surface,
+                lines_left,
+                (16, 16),
+                self.font,
+                padding=padding,
+                line_gap=4,
+                panel_alpha=self.HUD_BG_ALPHA,
+                text_color=self.HUD_TEXT_COLOR,
+                shadow=True,
+            )
 
         # ---------- Draw Message Log (Top Center) ----------
         log_msgs = self.message_log.get_messages()
@@ -739,3 +744,200 @@ class GameScene(BaseScene):
                 center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2),
             )
             surface.blit(text_surf, text_rect)
+
+        # ----------------------------------------------------
+        # [NEW] Multi-Slot Active Item Indicators (Bottom Right)
+        # ----------------------------------------------------
+        self.draw_hud_indicators(surface)
+
+    def _draw_circular_indicator(self, surface: pygame.Surface, 
+                                 item_id: str, 
+                                 center_x: int, center_y: int, 
+                                 radius: int, 
+                                 ratio: float = 1.0, 
+                                 fade_alpha: int = 255) -> None:
+        """
+        Helper วาดวงกลม 1 วง (Weapon / Armor / Consumable)
+        ratio: 0.0 - 1.0 (สำหรับ Cooldown Overlay), ถ้าเป็น Consumable อาจจะไม่ใช้ overlay ก็ส่ง 1.0
+        fade_alpha: 0 - 255 (สำหรับ Consumable ที่จะค่อยๆ จาง)
+        """
+        # 1. Prepare Item Icon
+        item = ITEM_DB.try_get(item_id)
+        icon_surf = None
+        if item and item.ui_icon_key:
+            try:
+                # scale_override=1.0 เพื่อให้ได้ขนาดตามไฟล์จริง
+                icon_surf = self.game.resources.load_image(item.ui_icon_key, scale_override=1.0)
+            except Exception:
+                pass
+        
+        if icon_surf is None:
+            return
+
+        # สร้าง surface ชั่วคราวสำหรับวงกลมนี้ เพื่อรองรับ fade_alpha
+        # ขนาดเผื่อขอบนิดหน่อย
+        size = radius * 2
+        temp_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        
+        # Local Coordinates on temp_surf
+        lc_radius = radius
+        lc_center = radius # (radius, radius)
+
+        # A. Background Circle (ดำโปร่งแสง)
+        gfxdraw.filled_circle(temp_surf, lc_center, lc_center, lc_radius, (0, 0, 0, 100))
+        gfxdraw.aacircle(temp_surf, lc_center, lc_center, lc_radius, (0, 0, 0, 100))
+
+        # B. Icon
+        icon_size = int(lc_radius * 2 * 0.7)
+        scaled_icon = pygame.transform.smoothscale(icon_surf, (icon_size, icon_size))
+        icon_rect = scaled_icon.get_rect(center=(lc_center, lc_center))
+        temp_surf.blit(scaled_icon, icon_rect)
+
+        # C. Cooldown Overlay (Radial Wipe)
+        # ถ้า ratio < 1.0 แสดงว่ามีการนับถอยหลัง
+        if ratio < 1.0:
+            filled_percent = 1.0 - ratio
+            if filled_percent > 0:
+                overlay_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+                
+                start_angle = -90
+                end_angle = start_angle + (filled_percent * 360)
+                
+                points = [(lc_center, lc_center)]
+                step = 5
+                i_start = int(start_angle)
+                i_end = int(end_angle)
+                
+                for deg in range(i_start, i_end + step, step):
+                    draw_deg = deg
+                    if draw_deg > end_angle:
+                        draw_deg = end_angle
+                    
+                    rad = math.radians(draw_deg)
+                    px = lc_radius + lc_radius * math.cos(rad)
+                    py = lc_radius + lc_radius * math.sin(rad)
+                    points.append((px, py))
+                
+                if len(points) > 2:
+                    pygame.draw.polygon(overlay_surf, (0, 0, 0, 100), points)
+                
+                temp_surf.blit(overlay_surf, (0, 0))
+
+        # Apply Global Alpha (for Consumable fade out)
+        if fade_alpha < 255:
+            # ใช้ special_flags เพื่อลด alpha ทั้งผืน
+            # แต่วิธีง่ายกว่าคือ set_alpha ทั้ง surface ก่อน blit ลงจอ
+            temp_surf.set_alpha(fade_alpha)
+
+        # Blit to Main Surface
+        surface.blit(temp_surf, (center_x - radius, center_y - radius))
+
+    def draw_hud_indicators(self, surface: pygame.Surface) -> None:
+        """
+        วาด Indicator แยก 3 วง:
+        1. Weapon (ขวาสุด) - Persistent Buff
+        2. Armor (ถัดมา) - Persistent Buff
+        3. Consumable (ถัดมาอีก/ด้านบน) - Show briefly then vanish
+        """
+        bm = getattr(self.player, "buff_manager", None)
+        
+        # --- 1. Find Active Weapon & Armor Buffs ---
+        weapon_buff = None
+        armor_buff = None
+
+        if bm is not None and hasattr(bm, "effects"):
+            for eff in bm.effects:
+                if eff.remaining <= 0:
+                    continue
+                
+                spec = getattr(eff, "spec", None)
+                eid = str(getattr(spec, "id", ""))
+                group = str(getattr(spec, "group", ""))
+                
+                # Check Type
+                item_id = None
+                if ":" in eid:
+                    _, item_id = eid.split(":", 1)
+                else:
+                    item_id = eid
+                
+                # เช็คจาก item_db ว่าเป็น weapon หรือ armor
+                item = ITEM_DB.try_get(item_id)
+                itype = getattr(item, "item_type", "unknown")
+                
+                # Assign to slots (Priority: Last applied usually found later in list, 
+                # but logic loop depends on complexity. Here we just take first match for simplicity 
+                # OR we can strictly look for group names if defined.)
+                
+                is_weapon = (itype == "weapon") or group == "weapon_override" or eid.startswith("weapon_override")
+                is_armor = (itype == "armor") or group == "armor_override" or eid.startswith("armor_override")
+                
+                if is_weapon and weapon_buff is None: 
+                    weapon_buff = eff
+                elif is_armor and armor_buff is None:
+                    armor_buff = eff
+        
+        # --- Config & Positions (Equidistant Arc) ---
+        radius = 30
+        arc_radius = 160  # Distance from bottom-right corner (Increased from 130 to fix overlap)
+        
+        # Center of the arc is the bottom-right corner of the screen
+        base_x = SCREEN_WIDTH
+        base_y = SCREEN_HEIGHT
+        
+        # Calculate positions using polar coordinates
+        # Angles: -110 (Weapon), -135 (Armor), -160 (Consumable)
+        # 0 deg = Right, -90 deg = Up
+        
+        def get_arc_pos(angle_deg: float) -> tuple[int, int]:
+            rad = math.radians(angle_deg)
+            px = base_x + arc_radius * math.cos(rad)
+            py = base_y + arc_radius * math.sin(rad)
+            return int(px), int(py)
+
+        # Slot 1: Weapon (Middle)
+        x_weapon, y_weapon = get_arc_pos(-135)
+        
+        # Slot 2: Armor (Right-most in the arc)
+        x_armor, y_armor = get_arc_pos(-110)
+        
+        # Slot 3: Consumable (Bottom-most in the arc)
+        x_consumable, y_consumable = get_arc_pos(-160)
+
+        # --- Draw Weapon Slot ---
+        if weapon_buff:
+            remaining = weapon_buff.remaining
+            total = float(getattr(weapon_buff.spec, "duration", 1.0))
+            ratio = max(0.0, min(1.0, remaining / total)) if total > 0 else 0.0
+            
+            # Extract ID
+            eid = str(getattr(weapon_buff.spec, "id", ""))
+            real_id = eid.split(":", 1)[1] if ":" in eid else eid
+            
+            self._draw_circular_indicator(surface, real_id, x_weapon, y_weapon, radius, ratio=ratio)
+
+        # --- Draw Armor Slot ---
+        if armor_buff:
+            remaining = armor_buff.remaining
+            total = float(getattr(armor_buff.spec, "duration", 1.0))
+            ratio = max(0.0, min(1.0, remaining / total)) if total > 0 else 0.0
+            
+            eid = str(getattr(armor_buff.spec, "id", ""))
+            real_id = eid.split(":", 1)[1] if ":" in eid else eid
+            
+            self._draw_circular_indicator(surface, real_id, x_armor, y_armor, radius, ratio=ratio)
+
+        # --- Draw Consumable Slot ---
+        if self.consumable_display_timer > 0 and self.latest_consumable_id:
+            alpha = 255
+            fade_start = 0.5 # start fading when 0.5s left
+            
+            if self.consumable_display_timer < fade_start:
+                alpha = int((self.consumable_display_timer / fade_start) * 255)
+            
+            self._draw_circular_indicator(surface, 
+                                          self.latest_consumable_id, 
+                                          x_consumable, y_consumable, 
+                                          radius, 
+                                          ratio=1.0, # No cooldown wipe for consumable
+                                          fade_alpha=alpha)

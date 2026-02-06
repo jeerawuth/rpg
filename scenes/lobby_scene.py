@@ -33,7 +33,7 @@ class LobbyScene(BaseScene):
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((0, 40, 60))
         w, h = surface.get_size()
-        title = self.font.render("เลือกสมรภูมิ", True, self.HUD_TEXT_COLOR)
+        title = self.font.render("เสร็จสิ้นภารกิจ", True, self.HUD_TEXT_COLOR)
         # Panel ให้ข้อความอ่านชัดทุกฉาก
         panel = pygame.Rect(0, 0, 520, 140)
         panel.center = (w // 2, h // 2 - 20)

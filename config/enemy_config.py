@@ -76,8 +76,8 @@ ENEMY_CONFIG: dict[str, dict] = {
     "troll": {
         "sprite_id": "troll",
         "stats": Stats(
-            max_hp=90,
-            hp=90,
+            max_hp=200,
+            hp=200,
             attack=40,
             magic=0,
             armor=3,

@@ -39,7 +39,20 @@ class ItemDatabase:
                 use_on_pickup=True,    # เก็บแล้วใช้ทันที (ไม่เข้า inventory)
             )
         )
-
+        self._register(
+            ItemBase(
+                id="potion_full",
+                name="ยาฟื้นฟูพลัง",
+                description="ยาฟื้นฟู HP เต็ม",
+                item_type="consumable",
+                max_stack=20,
+                icon_key="items/potion_full_01.png",
+                ui_icon_key="ui/items/potion_full_1.png",   # ใช้ใน inventory HUD
+                # ใช้ค่าพวกนี้สำหรับเอฟเฟกต์ใน ItemNode
+                heal_amount=100,        # ฟื้น HP 100 ต่อ 1 ชิ้น
+                use_on_pickup=True,    # เก็บแล้วใช้ทันที (ไม่เข้า inventory)
+            )
+        )
 
         # ---------- Weapons ----------
         # ดาบพื้นฐาน
@@ -66,11 +79,14 @@ class ItemDatabase:
                 description="ดาบรอบทิศทาง",
                 item_type="weapon",
                 max_stack=1,
-                icon_key="items/sword_all_direction.png",
+                icon_key="items/sword_all_direction_01.png",
                 ui_icon_key="ui/items/sword_all_direction_1.png",   # ใช้ใน inventory HUD
+                duration=10.0,
             )
         )
-
+        # แนะนำให้มีไฟล์:
+        #   assets/graphics/images/items/sword_all_direction2_01.png
+        #   assets/graphics/images/items/sword_all_direction2_02.png
         self._register(
             ItemBase(
                 id="sword_all_direction_2",
@@ -80,6 +96,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/sword_all_direction2_01.png",
                 ui_icon_key="ui/items/sword_all_direction_2.png",   # ใช้ใน inventory HUD
+                duration=20.0,
             )
         )
 
@@ -96,6 +113,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/bow_power_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/bow_power_1.png",   # ใช้ใน inventory HUD
+                duration=10.0,
             )
         )
 
@@ -109,6 +127,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/bow_power2_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/bow_power_2.png",   # ใช้ใน inventory HUD
+                duration=20.0,
             )
         )
 
@@ -122,6 +141,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/bow_power3_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/bow_power_3.png",   # ใช้ใน inventory HUD
+                duration=15.0,  # 15 วิ
             )
         )
 
@@ -135,6 +155,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/magic_lightning_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/magic_lightning_1.png",   # ใช้ใน inventory HUD
+                duration=15.0,
             )
         )
 
@@ -148,6 +169,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/magic_lightning2_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/magic_lightning_2.png",   # ใช้ใน inventory HUD
+                duration=5.0,
             )
         )
 
@@ -161,6 +183,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/fire_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/fire_1.png",   # ใช้ใน inventory HUD
+                duration=15.0,
             )
         )
 
@@ -174,6 +197,7 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/fire2_01.png",  # เฟรมแรกของอนิเมชัน
                 ui_icon_key="ui/items/fire_2.png",   # ใช้ใน inventory HUD
+                duration=10.0,
             )
         )
 
@@ -191,6 +215,19 @@ class ItemDatabase:
                 max_stack=1,
                 icon_key="items/shield_01.png",
                 ui_icon_key="ui/items/shield_1.png",   # ใช้ใน inventory HUD
+                duration=25.0,  # แก้จาก 10 -> 25 ตามที่คุณแก้ใน inventory_scene
+            )
+        )
+        self._register(
+            ItemBase(
+                id="shield_2",
+                name="Iron Shield",
+                description="โล่เหล็กสำหรับป้องกัน",
+                item_type="armor",
+                max_stack=1,
+                icon_key="items/shield2_01.png",
+                ui_icon_key="ui/items/shield_2.png",   # ใช้ใน inventory HUD
+                duration=50.0
             )
         )
 

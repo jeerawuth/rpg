@@ -96,7 +96,7 @@ class BaseScene(ABC):
     def draw_text_block(
         self,
         surface: pygame.Surface,
-        lines: list[str],
+        lines: list[str | tuple[str, tuple[int, int, int]]],
         topleft: tuple[int, int],
         font: pygame.font.Font,
         *,
@@ -110,7 +110,12 @@ class BaseScene(ABC):
     ) -> pygame.Rect:
         if not lines:
             return pygame.Rect(topleft, (0, 0))
-        widths = [font.size(t)[0] for t in lines]
+            
+        # Support (text, color) tuples in lines
+        def get_content(l):
+            return l[0] if isinstance(l, tuple) else l
+
+        widths = [font.size(get_content(t))[0] for t in lines]
         line_h = font.get_height()
         w = max(widths)
         h = len(lines) * line_h + (len(lines) - 1) * line_gap
@@ -119,7 +124,13 @@ class BaseScene(ABC):
         self.draw_panel(surface, rect, alpha=panel_alpha, color=panel_color, border_radius=border_radius)
         cy = y + padding
         for t in lines:
-            self.draw_text(surface, t, (x + padding, cy), font, color=text_color, shadow=shadow)
+            if isinstance(t, tuple):
+                txt, col = t
+            else:
+                txt = t
+                col = text_color
+            
+            self.draw_text(surface, txt, (x + padding, cy), font, color=col, shadow=shadow)
             cy += line_h + line_gap
         return rect
 

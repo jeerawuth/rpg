@@ -192750,10 +192750,18 @@
   ],
   "item_spawns": [
     {
-      "item_id": "fire_1",
+      "item_id": "shield_1",
       "pos": [
         1076,
         376
+      ],
+      "amount": 1
+    },
+    {
+      "item_id": "shield_2",
+      "pos": [
+        1096,
+        476
       ],
       "amount": 1
     },
@@ -192766,15 +192774,15 @@
       "amount": 3
     },
     {
-      "item_id": "magic_lightning_2",
+      "item_id": "fire_1",
       "pos": [
         1376,
         556
       ],
-      "amount": 1
+      "amount": 2
     },
     {
-      "item_id": "fire_2",
+      "item_id": "magic_lightning",
       "pos": [
         956,
         876
@@ -192783,6 +192791,14 @@
     },
     {
       "item_id": "sword_all_direction_2",
+      "pos": [
+        1456,
+        1146
+      ],
+      "amount": 1
+    },
+    {
+      "item_id": "sword_all_direction",
       "pos": [
         1456,
         1146

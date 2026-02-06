@@ -203540,6 +203540,24 @@
       ],
       "spawn_time": 30,
       "amount": 5
+    },
+    {
+      "type": "spider",
+      "pos": [
+        670,
+        660
+      ],
+      "spawn_time": 35,
+      "amount": 10
+    },
+    {
+      "type": "spider",
+      "pos": [
+        1820,
+        560
+      ],
+      "spawn_time": 35,
+      "amount": 10
     }
   ],
   "item_spawns": [

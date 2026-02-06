@@ -102040,7 +102040,8 @@
         1264,
         500
       ],
-      "spawn_time": 0
+      "spawn_time": 0,
+      "amount": 5
     },
     {
       "type": "slime_green",
@@ -102049,6 +102050,15 @@
         520
       ],
       "spawn_time": 0
+    },
+    {
+      "type": "spider",
+      "pos": [
+        1204,
+        520
+      ],
+      "spawn_time": 10,
+      "amount": 5
     },
     {
       "type": "goblin",
@@ -102072,7 +102082,8 @@
         1200,
         400
       ],
-      "spawn_time": 15
+      "spawn_time": 15,
+      "amount": 5
     },
     {
       "type": "goblin",
@@ -102137,6 +102148,15 @@
         460
       ],
       "spawn_time": 25
+    },
+    {
+      "type": "demona",
+      "pos": [
+        700,
+        470
+      ],
+      "spawn_time": 30,
+      "amount": 5
     }
   ],
   "item_spawns": [
