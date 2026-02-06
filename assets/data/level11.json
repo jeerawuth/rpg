@@ -1,7 +1,7 @@
 {
   "id": "level11",
   "next_level": "",
-  "tileset": "overworld_level_11.jpg",
+  "tileset": "overworld_level_11.png",
   "tile_size": 32,
   "width": 48,
   "height": 32,
@@ -102072,6 +102072,15 @@
         600
       ],
       "spawn_time": 8,
+      "amount": 10
+    },
+    {
+      "type": "undead",
+      "pos": [
+        666,
+        340
+      ],
+      "spawn_time": 12,
       "amount": 10
     }
   ],

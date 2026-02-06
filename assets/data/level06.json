@@ -1,7 +1,7 @@
 {
   "id": "level06",
   "next_level": "level07",
-  "tileset": "overworld_level_06.jpg",
+  "tileset": "overworld_level_06.png",
   "tile_size": 32,
   "width": 86,
   "height": 48,
@@ -273434,7 +273434,7 @@
       "type": "orc",
       "pos": [
         800,
-        450
+        650
       ],
       "spawn_time": 0,
       "amount": 3
