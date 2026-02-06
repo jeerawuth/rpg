@@ -3,7 +3,7 @@ import numpy as np
 import json
 import math
 
-IMG = "./output/overworld_level_10_bone.png"
+IMG = "./input/overworld_level_11_bone.png"
 
 # ขนาด cell สำหรับ collision (ไม่จำเป็นต้องเท่ากับ tile art)
 COLL_TILE   = 4       # 8x8 px

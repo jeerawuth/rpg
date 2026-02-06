@@ -1,7 +1,7 @@
 from PIL import Image
 import math
 
-IMG = "./input/overworld_level_10.png"  # แก้เป็นไฟล์ของคุณ
+IMG = "./input/overworld_level_11.png"  # แก้เป็นไฟล์ของคุณ
 img = Image.open(IMG).convert("RGBA")
 
 w, h = img.size
@@ -16,5 +16,5 @@ new_img = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
 # วางภาพเดิมที่มุมซ้ายบน (0,0)
 new_img.paste(img, (0, 0))
 
-new_img.save("./output/overworld_level_10.png")
+new_img.save("./output/overworld_level_11.png")
 print("new size:", new_img.size)
