@@ -1205,6 +1205,28 @@ class PlayerNode(AnimatedNode):
             # ระยะจาก center player → center hitbox ของแต่ละทิศ
             offset = max(self.rect.width, self.rect.height) + size
 
+            # คำนวณ theme ก่อนเข้า loop
+            theme = getattr(self, "sword_slash_theme", None)
+            if weapon_id == "sword_all_direction_2":
+                theme = getattr(self, "sword_slash_theme_2", None) or theme
+
+            # ------------------------------------------------------------------
+            # ✅ Spawn SwordSlashArcNode (รูปดาบหมุน 360°) เพียง 1 ครั้ง
+            # ------------------------------------------------------------------
+            if weapon_id in ("sword_all_direction", "sword_all_direction_2"):
+                if getattr(self, "sword_slash_image", None) is not None:
+                     SwordSlashArcNode(
+                        self.game,                 # game
+                        self.rect.center,          # center_pos
+                        "up",                      # direction (เริ่มที่ up แล้วหมุนครบรอบ)
+                        self.sword_slash_image,    # sword_image
+                        offset,                    # radius
+                        0.20,                      # duration
+                        self.game.all_sprites,     # *groups
+                        theme=theme,
+                        target=self,               # Follow player
+                    )
+
             for dir_vec, slash_dir in zip(directions, dir_names):
                 if dir_vec.length_squared() == 0:
                     continue
@@ -1220,13 +1242,8 @@ class PlayerNode(AnimatedNode):
                 attack_rect.inflate_ip(10, 10)
                 attack_rects.append(attack_rect)
 
-                # สร้างเอฟเฟ็กต์ฟันตามทิศนั้น ๆ
+                # สร้างเอฟเฟ็กต์ฟันตามทิศนั้น ๆ (Hitbox Visual)
                 # SlashEffectNode จะไปวาดเส้นโค้งตามมุมมอง isometric 25° เอง
-                # ใช้แบบ Ultimate ให้ดูอลังการ
-                theme = getattr(self, "sword_slash_theme", None)
-                if weapon_id == "sword_all_direction_2":
-                    theme = getattr(self, "sword_slash_theme_2", None) or theme
-                    
                 SlashEffectNode(
                     self.game,
                     attack_rect,
@@ -1235,20 +1252,6 @@ class PlayerNode(AnimatedNode):
                     style="ultimate",
                     theme=theme
                 )
-                # รูปดาบวิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์ (รองรับธีมสี)
-                if weapon_id in ("sword_all_direction", "sword_all_direction_2"):
-                    # ถ้ามีรูปดาบให้วิ่งตามเส้นโค้งร่วมกับเอฟเฟ็กต์
-                    if getattr(self, "sword_slash_image", None) is not None:
-                        SwordSlashArcNode(
-                            self.game,                 # game
-                            self.rect.center,          # center_pos
-                            slash_dir,                 # direction
-                            self.sword_slash_image,    # sword_image
-                            offset,                    # radius
-                            0.20,                      # duration
-                            self.game.all_sprites,     # *groups
-                            theme=theme,
-                        )
 
             # เช็คว่าศัตรูตัวไหนโดนฟัน (โดนซ้ำหลายทิศก็ให้โดนครั้งเดียว)
             hit_enemies: set[object] = set()

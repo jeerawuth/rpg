@@ -11,6 +11,7 @@ from core.audio_manager import MusicCue
 from entities.player_node import PlayerNode
 from entities.enemy_node import EnemyNode
 from entities.born_effect_node import BornEffectNode
+from entities.pickup_effect_node import PickupEffectNode
 
 from combat.collision_system import handle_group_vs_group
 from world.level_data import load_level
@@ -472,6 +473,21 @@ class GameScene(BaseScene):
         hits = pygame.sprite.spritecollide(self.player, self.items, dokill=True)
 
         for item_node in hits:
+            # ✨ Effect Visual
+            try:
+                # Spawn visual effect at PLAYER CENTER
+                # Use a temporary group so it updates/draws but doesn't interfere logic
+                PickupEffectNode(
+                    self.game,
+                    self.player.rect.center,
+                    self.all_sprites, # Draw it
+                    effect_id="pickup",
+                    scale=1.0,
+                    target=self.player # Follow the player
+                )
+            except Exception:
+                pass
+
             # ให้ ItemNode ตัดสินใจก่อนว่าไอเท็มนี้ใช้ทันทีไหม
             used_instant = item_node.on_pickup(self.player)
 
