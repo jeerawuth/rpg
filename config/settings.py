@@ -14,3 +14,4 @@ CAMERA_LERP = 0.1
 
 UI_FONT_PATH = "fonts/Kanit-Bold.ttf"
 UI_FONT_HUD_PATH = "fonts/GoogleSans.ttf"
+UI_SCORE_PATH = "fonts/FascinateInline-Regular.ttf"

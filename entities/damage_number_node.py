@@ -1,6 +1,6 @@
 import pygame
 from .node_base import NodeBase
-from config.settings import UI_FONT_HUD_PATH
+from config.settings import UI_SCORE_PATH
 
 class DamageNumberNode(NodeBase):
     def __init__(
@@ -19,7 +19,7 @@ class DamageNumberNode(NodeBase):
         # ตั้งค่าฟอนต์
         # ถ้าติด Critical อาจจะทำตัวใหญ่ขึ้นหรือสีต่าง
         font_size = 28 if is_crit else 20
-        font = self.game.resources.load_font(UI_FONT_HUD_PATH, font_size)
+        font = self.game.resources.load_font(UI_SCORE_PATH, font_size)
         
         text = str(value)
         # ถ้าติดลบ (เช่น ลดเลือด) ให้ใส่ - นำหน้า หรือจะใส่แค่ตัวเลขก็ได้ตามดีไซน์
