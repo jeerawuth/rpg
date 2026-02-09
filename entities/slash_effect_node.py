@@ -463,6 +463,97 @@ class SlashEffectNode(AnimatedNode):
         return a + (b - a) * t
 
     @classmethod
+    def _draw_polygon_strip(
+        cls,
+        surface: pygame.Surface,
+        points: List[Tuple[int, int]],
+        color: Tuple[int, int, int, int],
+        base_width: float,
+        taper_power: float = 1.0,
+    ) -> None:
+        if len(points) < 2:
+            return
+
+        # Prepare vertices
+        n = len(points)
+        vertices = []
+        
+        # Calculate normals and widths
+        for i in range(n):
+            # Calculate direction
+            if i < n - 1:
+                dx = points[i+1][0] - points[i][0]
+                dy = points[i+1][1] - points[i][1]
+            else:
+                dx = points[i][0] - points[i-1][0]
+                dy = points[i][1] - points[i-1][1]
+                
+            dist = math.hypot(dx, dy)
+            if dist == 0:
+                nx, ny = 0, 0
+            else:
+                nx = -dy / dist
+                ny = dx / dist
+
+            # Average normal for internal points (smoother joins)
+            if 0 < i < n - 1:
+                p_dx = points[i][0] - points[i-1][0]
+                p_dy = points[i][1] - points[i-1][1]
+                p_dist = math.hypot(p_dx, p_dy)
+                if p_dist > 0:
+                    p_nx = -p_dy / p_dist
+                    p_ny = p_dx / p_dist
+                    nx = (nx + p_nx) * 0.5
+                    ny = (ny + p_ny) * 0.5
+                    # Re-normalize
+                    n_dist = math.hypot(nx, ny)
+                    if n_dist > 0:
+                        nx /= n_dist
+                        ny /= n_dist
+
+            # Tapering
+            prog = i / (n - 1)
+            # Head (0) to Tail (1) or vice versa?
+            # In arc_points, usually index 0 is start.
+            # Let's assume uniform tapering for now based on style
+            width_factor = 1.0 - (prog ** taper_power)
+            current_width = max(1.0, base_width * width_factor)
+            
+            px, py = points[i]
+            wx = nx * current_width * 0.5
+            wy = ny * current_width * 0.5
+            
+            vertices.append(((px - wx, py - wy), (px + wx, py + wy), current_width))
+
+        # Draw quads + rounds
+        r, g, b, a = color
+        for i in range(len(vertices) - 1):
+            p0_l, p0_r, w0 = vertices[i]
+            p1_l, p1_r, w1 = vertices[i+1]
+            
+            # Draw segment
+            pygame.draw.polygon(surface, (r, g, b, a), [p0_l, p1_l, p1_r, p0_r])
+            
+            # Draw rounded joint at p1 (except last)
+            if i < len(vertices) - 2:
+                cx = (p1_l[0] + p1_r[0]) * 0.5
+                cy = (p1_l[1] + p1_r[1]) * 0.5
+                pygame.draw.circle(surface, (r, g, b, a), (cx, cy), w1 * 0.5)
+        
+        # Start cap
+        p0_l, p0_r, w0 = vertices[0]
+        cx = (p0_l[0] + p0_r[0]) * 0.5
+        cy = (p0_l[1] + p0_r[1]) * 0.5
+        pygame.draw.circle(surface, (r, g, b, a), (cx, cy), w0 * 0.5)
+        
+        # End cap
+        pE_l, pE_r, wE = vertices[-1]
+        cx = (pE_l[0] + pE_r[0]) * 0.5
+        cy = (pE_l[1] + pE_r[1]) * 0.5
+        pygame.draw.circle(surface, (r, g, b, a), (cx, cy), wE * 0.5)
+
+
+    @classmethod
     def _build_frames(
         cls,
         arc_points: List[Tuple[int, int]],
@@ -471,8 +562,8 @@ class SlashEffectNode(AnimatedNode):
         num_frames: int = 10,
         seed_offset: int = 0,
         thickness_boost: int = 0,
-    core_rgb: Tuple[int, int, int] = (210, 255, 255),
-    glow_rgb: Tuple[int, int, int] = (0, 220, 255),
+        core_rgb: Tuple[int, int, int] = (210, 255, 255),
+        glow_rgb: Tuple[int, int, int] = (0, 220, 255),
     ) -> List[pygame.Surface]:
         if not arc_points or len(arc_points) < 2:
             return [pygame.Surface((width, height), pygame.SRCALPHA)]
@@ -480,55 +571,73 @@ class SlashEffectNode(AnimatedNode):
         frames: List[pygame.Surface] = []
         n = len(arc_points)
 
-
         for fi in range(num_frames):
             t = fi / max(num_frames - 1, 1)
+            # Fade out
             fade = 1.0 - cls._ease_out_cubic(t)
-
+            
             surf = pygame.Surface((width, height), pygame.SRCALPHA)
 
-            # Glow
-            glow = pygame.Surface((width, height), pygame.SRCALPHA)
-            base_thick = int(cls._lerp(18, 6, t)) + thickness_boost
-            glow_alpha = int(110 * fade)
+            # --- 1) Glow Pass (Additive-like) ---
+            # Wider, softer, alpha fades
+            glow_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+            
+            base_thick = 20.0 + thickness_boost * 1.5
+            # Thicken as it fades? or shrink? 
+            # Usually shrink slightly
+            current_glow_width = base_thick * (1.0 - 0.2 * t)
+            
+            glow_alpha = int(120 * fade)
+            
+            cls._draw_polygon_strip(
+                glow_surf, 
+                arc_points, 
+                (*glow_rgb, glow_alpha), 
+                base_width=current_glow_width,
+                taper_power=1.5
+            )
 
-            for k in range(n - 1):
-                u = k / max(n - 2, 1)
-                w = max(2, int(base_thick * (1.0 - 0.65 * u)))
-                a = int(glow_alpha * (1.0 - 0.35 * u))
-                pygame.draw.line(glow, (*glow_rgb, a), arc_points[k], arc_points[k + 1], w)
-
-            # Bloom
-            bloom_scale = 1.08
+            # Apply Bloom (Scale up and down)
+            bloom_scale = 1.15
             bw = max(1, int(width * bloom_scale))
             bh = max(1, int(height * bloom_scale))
-            glow_big = pygame.transform.smoothscale(glow, (bw, bh))
+            glow_big = pygame.transform.smoothscale(glow_surf, (bw, bh))
             glow_soft = pygame.transform.smoothscale(glow_big, (width, height))
+            
+            # Blit brightened glow
             surf.blit(glow_soft, (0, 0))
+            
+            # --- 2) Core Pass (Sharp) ---
+            core_thick = 6.0 + thickness_boost
+            current_core_width = core_thick * (1.0 - 0.3 * t)
+            core_alpha = int(255 * fade)
+            
+            cls._draw_polygon_strip(
+                surf,
+                arc_points,
+                (*core_rgb, core_alpha),
+                base_width=current_core_width,
+                taper_power=1.2
+            )
 
-            # Core
-            core_thick = int(cls._lerp(8, 2, t)) + max(0, thickness_boost // 2)
-            core_alpha = int(220 * fade)
-
-            for k in range(n - 1):
-                u = k / max(n - 2, 1)
-                w = max(1, int(core_thick * (1.0 - 0.75 * u)))
-                a = int(core_alpha * (1.0 - 0.45 * u))
-                pygame.draw.line(surf, (*core_rgb, a), arc_points[k], arc_points[k + 1], w)
-
-            # Spark
+            # --- 3) Spark Pass ---
             rng = random.Random(1337 + seed_offset + fi * 97)
-            # เพิ่ม spark ตามความหนา (ยิ่งหนายิ่งเยอะ)
-            spark_count = int(10 + thickness_boost * 2)
-            spread = int(6 + thickness_boost * 1.5)
+            spark_count = int(8 + thickness_boost)
+            spread = int(4 + thickness_boost * 1.0)
+            
             for _ in range(spark_count):
                 idx = rng.randint(0, n - 1)
                 px, py = arc_points[idx]
                 ox = rng.randint(-spread, spread)
                 oy = rng.randint(-spread, spread)
-                r = rng.randint(1, 3)
-                a = int(rng.randint(90, 180) * fade)
-                pygame.draw.circle(surf, (255, 255, 255, a), (px + ox, py + oy), r)
+                
+                # Varying size
+                r = rng.uniform(1.0, 3.5)
+                
+                # Alpha flash
+                a = int(rng.randint(150, 255) * fade)
+                
+                pygame.draw.circle(surf, (*core_rgb, a), (px + ox, py + oy), r)
 
             frames.append(surf)
 
