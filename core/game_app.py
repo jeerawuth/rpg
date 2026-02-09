@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import pygame
+import sys
+import os
 
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, WINDOW_TITLE, FULLSCREEN
 from .event_bus import EventBus
@@ -14,6 +16,16 @@ from .scene_manager import SceneManager
 
 class GameApp:
     def __init__(self) -> None:
+        # Determine if application is a script file or frozen exe
+        if getattr(sys, 'frozen', False):
+            # If the application is run as a bundle, the PyInstaller bootloader
+            # extends the sys module by a flag frozen=True and sets the app 
+            # path into variable _MEIPASS'.
+            # Note: We added assets with --add-data "assets:assets", so they are in a subfolder.
+            base_path = os.path.join(sys._MEIPASS, "assets")
+        else:
+            base_path = "assets"
+
         # Pre-initialize mixer with larger buffer to prevent sound cracking/distortion
         # frequency=44100, size=-16, channels=2, buffer=2048
         pygame.mixer.pre_init(44100, -16, 2, 2048)
@@ -39,7 +51,7 @@ class GameApp:
         
         # กำหนด scale สำหรับ sprite กับ tile
         self.resources = ResourceManager(
-            base_path="assets",
+            base_path=base_path,
             sprite_scale=0.25,   # ขนาดตัวละคร / enemy
             tile_scale=1.0,      # ขนาด tile
             projectile_scale=0.2,  # ลูกธนู

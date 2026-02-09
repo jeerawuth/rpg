@@ -16,7 +16,8 @@ class OptionsScene(BaseScene):
         
         # ---------- Character Scanning ----------
         import os
-        base_path = "assets/graphics/images/player"
+        # Use resource manager's base_path to ensure correct path in frozen builds
+        base_path = os.path.join(self.game.resources.base_path, "graphics", "images", "player")
         self.available_players = []
         if os.path.isdir(base_path):
             for d in os.listdir(base_path):
