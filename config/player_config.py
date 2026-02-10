@@ -3,6 +3,21 @@
 from combat.damage_system import Stats
 
 PLAYER_CONFIG: dict[str, dict] = {
+    "hero": {
+        "speed": 250,
+        "scale": 0.7,
+        "stats": Stats(
+            max_hp=90,
+            hp=90,
+            attack=25,
+            magic=4,
+            armor=4,
+            resistances={"physical": 0.1},
+            crit_chance=0.1,
+            crit_multiplier=1.5,
+        ),
+        "description": "Standard human warrior. Balanced usage."
+    },
     "knight": {
         "speed": 250,
         "scale": 1.0,
