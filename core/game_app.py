@@ -73,7 +73,7 @@ class GameApp:
         self.scene_manager = SceneManager(self)
 
         # Global State
-        self.selected_player_type: str = "knight"
+        self.selected_player_type: str = "hero"
 
     def quit(self) -> None:
         self.running = False

@@ -5,7 +5,7 @@ from combat.damage_system import Stats
 PLAYER_CONFIG: dict[str, dict] = {
     "hero": {
         "speed": 250,
-        "scale": 0.7,
+        "scale": 0.65,
         "stats": Stats(
             max_hp=90,
             hp=90,
