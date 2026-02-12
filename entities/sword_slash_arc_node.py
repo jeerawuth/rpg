@@ -424,7 +424,8 @@ class SwordSlashArcNode(pygame.sprite.Sprite):
                     p1_left, p1_right, w1 = vertices[i+1]
                     
                     prog = i / (points_len - 1)
-                    alpha = int(255 * prog)
+                    # Reduce max alpha further to 80 (~30%) as requested
+                    alpha = int(80 * prog)
                     
                     if pass_idx == 0: # Glow (softer, wider)
                          color = (*self._glow_rgb, max(0, int(alpha * 0.4)))

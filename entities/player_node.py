@@ -63,6 +63,12 @@ SWORD_SLASH_THEMES: dict[str, dict[str, tuple[int, int, int]]] = {
         "glow_rgb": (230, 160, 255),     # จาก bolt_main
         "sword_tint_rgb": (230, 160, 255),
     },
+    # แนว “Purple” : ม่วงขาว (ตาม Request)
+    "purple": {
+        "core_rgb": (250, 240, 255),     # ขาวอมม่วงจางๆ
+        "glow_rgb": (170, 50, 255),      # ม่วงเข้มสด
+        "sword_tint_rgb": (170, 50, 255),
+    },
 }
 
 # optional imports (เผื่อยังไม่มีระบบ inventory/equipment)
@@ -172,13 +178,13 @@ class PlayerNode(AnimatedNode):
                 # ---- Sword slash theme (เลือก preset ได้) ----
         # เปลี่ยนธีมได้ เช่น: "blue" | "arcane" | "storm" | "holy" | "plasma"
         # หมายเหตุ: default เป็น "blue" (โทนฟ้าเดิมของโปรเจกต์)
-        self.sword_slash_theme_name = "plasma"
+        self.sword_slash_theme_name = "blue"
         self.sword_slash_theme = SWORD_SLASH_THEMES.get(
             self.sword_slash_theme_name, SWORD_SLASH_THEMES["blue"]
         ).copy()
 
         # ถ้าอยากให้ sword_all_direction_2 คนละสี ให้ตั้งค่าเป็นชื่อธีม (หรือกำหนด dict เอง)
-        self.sword_slash_theme_2_name = "holy"  # เช่น "plasma"
+        self.sword_slash_theme_2_name = "purple"  # ใช้ธีมใหม่ ม่วง-ขาว
         self.sword_slash_theme_2 = (
             SWORD_SLASH_THEMES.get(self.sword_slash_theme_2_name).copy()
             if self.sword_slash_theme_2_name in SWORD_SLASH_THEMES
@@ -1535,6 +1541,9 @@ class PlayerNode(AnimatedNode):
             trail_theme = "storm"
 
         # กรณี bow_power_3 ยิง 3 ดอก
+        # Spawn Position: rect.center - (0, 20) เพื่อให้ดูเหมือนออกจากมือ/อาวุธ (สูงขึ้น)
+        spawn_pos = (self.rect.centerx, self.rect.centery - 20)
+
         if weapon and weapon.id == "bow_power_3":
             # 3 ทิศ: 0, -15, +15 degrees
             angles = [0, -15, 15]
@@ -1542,7 +1551,7 @@ class PlayerNode(AnimatedNode):
                 rotated_dir = direction.rotate(angle)
                 ProjectileNode(
                     self,
-                    self.rect.center,
+                    spawn_pos, # Use adjusted position
                     rotated_dir,
                     650,
                     packet,
@@ -1558,7 +1567,7 @@ class PlayerNode(AnimatedNode):
             # ยิงปกติ 1 ดอก
             ProjectileNode(
                 self,
-                self.rect.center,
+                spawn_pos, # Use adjusted position
                 direction,
                 650,
                 packet,
