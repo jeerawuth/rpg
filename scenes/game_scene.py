@@ -589,9 +589,24 @@ class GameScene(BaseScene):
 
         # วาด sprite ตาม z-index (default = 0 ถ้าไม่มี z)
         for sprite in sorted(self.all_sprites, key=lambda s: getattr(s, "z", 0)):
+            # <--- NEW: Draw Collision Indicator --->
+            if getattr(sprite, "show_collision_indicator", False) and not getattr(sprite, "is_dead", False):
+                self._draw_collision_indicator(surface, sprite, offset)
+            # <--- END NEW --->
+
+            # <--- NEW: Draw Player Guide (Back) --->
+            if sprite == self.player and not self.player.is_dead:
+                self._draw_player_guides(surface, offset, "back")
+            # <--- END NEW --->
+
             draw_x = sprite.rect.x - int(offset.x)
             draw_y = sprite.rect.y - int(offset.y)
             surface.blit(sprite.image, (draw_x, draw_y))
+
+            # <--- NEW: Draw Player Guide (Front) --->
+            if sprite == self.player and not self.player.is_dead:
+                self._draw_player_guides(surface, offset, "front")
+            # <--- END NEW --->
 
             # ---------- วาดแถบ HP ของศัตรู ----------
             if isinstance(sprite, EnemyNode) or isinstance(sprite, PlayerNode) and not sprite.is_dead:
@@ -620,6 +635,9 @@ class GameScene(BaseScene):
         # วาดเลเยอร์ foreground (ถ้ามี) ให้อยู่หน้าตัวละคร แต่หลังพื้นหลัง
         if hasattr(self.tilemap, "draw_foreground"):
             self.tilemap.draw_foreground(surface, camera_offset=offset)
+
+        # <--- REMOVED: Old Draw Player Direction Indicator call (Moved to sprite loop) --->
+
 
 
         # HUD (วาดแบบ fixed screen)
@@ -765,6 +783,154 @@ class GameScene(BaseScene):
         # [NEW] Multi-Slot Active Item Indicators (Bottom Right)
         # ----------------------------------------------------
         self.draw_hud_indicators(surface)
+
+
+    def _draw_player_guides(self, surface: pygame.Surface, offset: pygame.Vector2, part: str) -> None:
+        """
+        วาดวงรีสีเขียว (Isometric 25 degree) ที่เท้าผู้เล่น
+        part: "back" (วาดครึ่งบน/หลัง) หรือ "front" (วาดครึ่งล่าง/หน้า) เพื่อทำ Depth Sorting
+        """
+        player = self.player
+        
+        # 1. คำนวณตำแหน่ง Center ที่เท้า (ใช้ rect.midbottom)
+        # ปรับขึ้นเล็กน้อย (-8) เพื่อให้ดูสมจริงขึ้น (เท้าไม่ได้อยู่ขอบล่างสุดของ image เสมอไป)
+        center_x = player.rect.centerx - offset.x
+        center_y = player.rect.bottom - offset.y - 8
+
+        # 2. ขนาดวงรี & Animation Pulse
+        # Base width
+        base_width = player.rect.width * 0.6
+        
+        # Pulse Animation (Sin wave)
+        # period = 1500 ms
+        t = pygame.time.get_ticks()
+        pulse = (math.sin(t * 0.004) + 1) * 0.5  # 0.0 to 1.0
+        
+        # Breathing size: scale 1.0 to 1.1
+        current_width = base_width * (1.0 + pulse * 0.1)
+        
+        # Isometric height
+        current_height = current_width * 0.4226
+
+        # สร้าง temporary surface
+        ex_pad = 20
+        surf_w = int(current_width + ex_pad * 2)
+        surf_h = int(current_height + ex_pad * 2)
+        
+        temp_surf = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
+        ts_cx = surf_w // 2
+        ts_cy = surf_h // 2
+        
+        temp_ellipse_rect = pygame.Rect(0, 0, current_width, current_height)
+        temp_ellipse_rect.center = (ts_cx, ts_cy)
+
+        # 3. วาดวงแหวน (Subtle Ring)
+        # สีขาว/ฟ้าจางๆ
+        ring_color = (200, 255, 255, 40 + int(pulse * 20)) # Alpha 40-60
+        pygame.draw.ellipse(temp_surf, ring_color, temp_ellipse_rect, 2)
+
+        # Blit Ring แบ่งครึ่ง Back/Front
+        dest_x = center_x - ts_cx
+        dest_y = center_y - ts_cy
+        
+        if part == "back":
+            area_rect = pygame.Rect(0, 0, surf_w, ts_cy)
+            surface.blit(temp_surf, (dest_x, dest_y), area_rect)
+        elif part == "front":
+            area_rect = pygame.Rect(0, ts_cy, surf_w, surf_h - ts_cy)
+            surface.blit(temp_surf, (dest_x, dest_y + ts_cy), area_rect)
+
+        # 4. วาด Chevron Marker (Glowing Arrowhead)
+        if player.facing.length_squared() > 0:
+            angle = math.atan2(player.facing.y, player.facing.x)
+
+            # ตำแหน่ง Marker (ขอบวงรี)
+            a = current_width / 2
+            b = current_height / 2
+            
+            # ดันออกไปนิดนึง
+            offset_scale = 1.15
+            marker_x = center_x + (a * offset_scale) * math.cos(angle)
+            marker_y = center_y + (b * offset_scale) * math.sin(angle)
+
+            should_draw = False
+            if part == "back" and player.facing.y < 0: 
+                should_draw = True
+            elif part == "front" and player.facing.y >= 0: 
+                should_draw = True
+            
+            if should_draw:
+                # Chevron Geometry (Local)
+                # Pointing Right (0 deg) -> then rotate
+                #      p1 (Tip)
+                #     /
+                #   p2 (Center Back)
+                #     \
+                #      p3 (Bottom)
+                
+                chev_size = 6.0
+                
+                # Tip at (r, 0)
+                # Wings at (-r, -r), (-r, r)
+                # Inner at (-r/2, 0)
+                
+                local_poly = [
+                    (chev_size, 0),         # Tip
+                    (-chev_size, -chev_size), # Top Wing
+                    (-chev_size/2, 0),      # Inner Back
+                    (-chev_size, chev_size)   # Bottom Wing
+                ]
+                
+                # Rotate & Translate
+                cos_a = math.cos(angle)
+                sin_a = math.sin(angle)
+                
+                final_points = []
+                for px, py in local_poly:
+                    # 1. Rotate in World Space (Top-down)
+                    rx = px * cos_a - py * sin_a
+                    ry = px * sin_a + py * cos_a
+                    
+                    # 2. Apply Isometric Projection (Squash Y)
+                    # Use same ratio as ellipse (0.4226)
+                    ry *= 0.4226
+                    
+                    # 3. Translate to Screen Position
+                    final_points.append((marker_x + rx, marker_y + ry))
+                
+                # Draw Glow (Layered)
+                # Layer 1: Wide, Faint
+                # Layer 2: Core, Bright
+                
+                # สร้าง Surface เล็กๆ สำหรับ Glow
+                g_size = 30
+                glow_surf = pygame.Surface((g_size, g_size), pygame.SRCALPHA)
+                g_cx, g_cy = g_size // 2, g_size // 2
+                
+                # Map points to glow_surf center
+                # Centroid of polygon roughly at marker_x, marker_y
+                glow_points = []
+                for fx, fy in final_points:
+                    glow_points.append((g_cx + (fx - marker_x), g_cy + (fy - marker_y)))
+
+                # Glow Color (Cyan-ish)
+                glow_color = (0, 255, 255)
+                
+                # Outer Glow
+                pygame.draw.polygon(glow_surf, (*glow_color, 50), glow_points, 0) # Fill
+                pygame.draw.polygon(glow_surf, (*glow_color, 100), glow_points, 2) # Outline thick
+                
+                # Inner Core (White)
+                core_points = []
+                for gx, gy in glow_points:
+                    # Scale down slightly towards center
+                    # Simple hack: just use same points for now but draw white line
+                    core_points.append((gx, gy))
+                    
+                pygame.draw.polygon(glow_surf, (255, 255, 255, 200), core_points, 1) # Thin white outline
+
+                # Blit Glow
+                surface.blit(glow_surf, (marker_x - g_cx, marker_y - g_cy))
 
     def _draw_circular_indicator(self, surface: pygame.Surface, 
                                  item_id: str, 
