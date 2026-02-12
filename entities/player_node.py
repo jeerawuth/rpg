@@ -1654,8 +1654,8 @@ class PlayerNode(AnimatedNode):
 
         crit_text = " (CRIT)" if result.is_crit else ""
         self.game.add_log(
-            f"โดนโจมตี {result.final_damage}{crit_text}, "
-            f"HP: {self.stats.hp}/{self.stats.max_hp}"
+            f"โดนโจมตี {int(result.final_damage)}{crit_text}, "
+            f"HP: {int(self.stats.hp)}/{int(self.stats.max_hp)}"
         )
 
         # 🔊 เล่นเสียงโดนตี (ถ้ามีไฟล์)
