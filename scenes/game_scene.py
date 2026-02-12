@@ -824,7 +824,15 @@ class GameScene(BaseScene):
         temp_ellipse_rect = pygame.Rect(0, 0, current_width, current_height)
         temp_ellipse_rect.center = (ts_cx, ts_cy)
 
-        # 3. วาดวงแหวน (Subtle Ring)
+        # 3. วาดวงแหวน (Subtle Ring with Faint Shadow)
+        # Shadow Ring (Offset +2, +2) -> Alpha reduced for smoothness
+        shadow_rect = temp_ellipse_rect.copy()
+        shadow_rect.x += 2
+        shadow_rect.y += 2
+        # Use simple AA for "smooth" look? No, just low alpha.
+        pygame.draw.ellipse(temp_surf, (0, 0, 0, 30), shadow_rect, 2)
+
+        # Main Ring
         # สีขาว/ฟ้าจางๆ
         ring_color = (200, 255, 255, 40 + int(pulse * 20)) # Alpha 40-60
         pygame.draw.ellipse(temp_surf, ring_color, temp_ellipse_rect, 2)
@@ -861,13 +869,6 @@ class GameScene(BaseScene):
             
             if should_draw:
                 # Chevron Geometry (Local)
-                # Pointing Right (0 deg) -> then rotate
-                #      p1 (Tip)
-                #     /
-                #   p2 (Center Back)
-                #     \
-                #      p3 (Bottom)
-                
                 chev_size = 6.0
                 
                 # Tip at (r, 0)
@@ -899,10 +900,6 @@ class GameScene(BaseScene):
                     final_points.append((marker_x + rx, marker_y + ry))
                 
                 # Draw Glow (Layered)
-                # Layer 1: Wide, Faint
-                # Layer 2: Core, Bright
-                
-                # สร้าง Surface เล็กๆ สำหรับ Glow
                 g_size = 30
                 glow_surf = pygame.Surface((g_size, g_size), pygame.SRCALPHA)
                 g_cx, g_cy = g_size // 2, g_size // 2
@@ -912,9 +909,17 @@ class GameScene(BaseScene):
                 glow_points = []
                 for fx, fy in final_points:
                     glow_points.append((g_cx + (fx - marker_x), g_cy + (fy - marker_y)))
+                
+                # Shadow Points (Offset +2, +2)
+                shadow_points = []
+                for gx, gy in glow_points:
+                    shadow_points.append((gx + 2, gy + 2))
 
                 # Glow Color (Cyan-ish)
                 glow_color = (0, 255, 255)
+                
+                # Draw Shadow (Faint)
+                pygame.draw.polygon(glow_surf, (0, 0, 0, 40), shadow_points, 0) # Fill shadow (fainter, reduced from 80)
                 
                 # Outer Glow
                 pygame.draw.polygon(glow_surf, (*glow_color, 50), glow_points, 0) # Fill

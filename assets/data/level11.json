@@ -102096,10 +102096,10 @@
     {
       "item_id": "bow_power_3",
       "pos": [
-        212,
-        400
+        1212,
+        470
       ],
-      "amount": 1
+      "amount": 2
     },
     {
       "item_id": "fire_2",
@@ -102107,7 +102107,7 @@
         700,
         450
       ],
-      "amount": 1
+      "amount": 2
     },
     {
       "item_id": "magic_lightning_2",
