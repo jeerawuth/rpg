@@ -57,10 +57,10 @@ ENEMY_CONFIG: dict[str, dict] = {
     },
     "boss_orc": {
         "sprite_id": "boss_orc",
-        "scale": 0.3,  # ตัวใหญ่กว่าปกติ (ปกติ 0.25)
+        "scale": 0.5,  # ตัวใหญ่กว่าปกติ (ปกติ 0.25)
         "stats": Stats(
-            max_hp=80,
-            hp=80,
+            max_hp=1000,
+            hp=1000,
             attack=35,
             magic=0,
             armor=3,
@@ -72,6 +72,15 @@ ENEMY_CONFIG: dict[str, dict] = {
         "move_range": 800,
         "aggro_radius": 660,   # <<--- รัศมีมองเห็น / ไล่ตาม (หน่วยเป็นพิกเซล)
         "xp_reward": 10,
+        # Config สำหรับ Boss AI
+        "type": "boss",
+        "attack_config": {
+            "range": 350,           # ระยะเริ่มโจมตี
+            "cooldown": 3.0,        # เวลาพักระหว่างท่า
+            "charge_time": 1.0,     # เวลาชาร์จ (วงแดง)
+            "damage_radius": 150,   # รัศมีระเบิดพลัง
+            "damage_multiplier": 1.5, # ความแรงท่าไม้ตาย (คูณจาก base attack)
+        }
     },
     "troll": {
         "sprite_id": "troll",

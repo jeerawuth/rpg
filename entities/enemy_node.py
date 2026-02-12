@@ -5,6 +5,7 @@ import pygame
 import math
 
 from .animated_node import AnimatedNode
+from .projectile_node import ProjectileNode
 from .damage_number_node import DamageNumberNode
 from .hit_effect_node import HitEffectNode
 from combat.damage_system import Stats, DamagePacket, compute_damage, DamageResult
@@ -84,6 +85,18 @@ class EnemyNode(AnimatedNode):
 
         self.facing = pygame.Vector2(1, 0)
         self.velocity = pygame.Vector2(0, 0)
+
+        # ---------- Boss Logic (Must init before loading animations) ----------
+        self.is_boss = (cfg.get("type") == "boss")
+        self.attack_config = cfg.get("attack_config", {})
+        
+        # Timers for boss
+        self.charge_timer: float = 0.0
+        self.attack_cooldown_timer: float = 0.0
+        self.attack_anim_done: bool = False
+        
+        # Target for attack (snapshot player position)
+        self.attack_target_pos: pygame.Vector2 | None = None
 
         # ---------- โหลด animations (ใช้ cache ถ้ามีแล้ว) ----------
         cached = EnemyNode._ANIMATION_CACHE.get(self.sprite_id)
@@ -173,6 +186,9 @@ class EnemyNode(AnimatedNode):
 
 
 
+
+
+
     # ============================================================
     # Hp ratio calculation
     # ============================================================
@@ -191,6 +207,10 @@ class EnemyNode(AnimatedNode):
         # ใช้โฟลเดอร์: enemy/<sprite_id>/<state>/<state>_<direction>_01.png
         # เช่น: enemy/goblin/idle/idle_down_01.png
         states = ["idle", "walk", "hurt", "dead"]
+        if self.is_boss:
+            states.append("attack")
+            states.append("charge")
+            
         directions = ["down", "left", "right", "up"]
 
         for state in states:
@@ -206,14 +226,25 @@ class EnemyNode(AnimatedNode):
         while True:
             # assets/graphics/images/enemy/<sprite_id>/<state>/<state>_<direction>_01.png
             rel_path = f"enemy/{self.sprite_id}/{state}/{state}_{direction}_{index:02d}.png"
-            # print(f"[EnemyNode] Try load: {rel_path}") 
+            
+            # Use resource manager to check/load
             try:
                 surf = self.game.resources.load_image(rel_path, scale_override=self.custom_scale)
+                frames.append(surf)
+                index += 1
             except Exception:
-                # print(f"[EnemyNode] Fail load: {rel_path} -> {e}")
+                # If failed on the first frame (index=1), try loading without number suffix
+                # e.g. "charge_down.png" instead of "charge_down_01.png"
+                if index == 1:
+                     rel_path_no_num = f"enemy/{self.sprite_id}/{state}/{state}_{direction}.png"
+                     try:
+                         surf = self.game.resources.load_image(rel_path_no_num, scale_override=self.custom_scale)
+                         frames.append(surf)
+                     except Exception:
+                         pass # Really not found
+                
+                # Stop looking for sequence
                 break
-            frames.append(surf)
-            index += 1
 
         return frames
 
@@ -306,64 +337,300 @@ class EnemyNode(AnimatedNode):
         self.facing.x = 1 if self.patrol_dir > 0 else -1
         self.facing.y = 0
 
+    def update(self, dt: float) -> None:
+        self.dt = dt  # Store for use in other methods if needed
+
+        # 1) Timers
+        if self.hurt_timer > 0:
+            self.hurt_timer -= dt
+            
+        if self.is_dead:
+            self.death_timer -= dt
+            if self.death_timer <= 0:
+                self.kill()
+            self._update_animation_state()
+            self._apply_animation()
+            super().update(dt)
+            return
+            
+        # 2) Status Effects
+        self.status.update(dt)
+        
+        # 3) Animation config (ถ้าเพิ่งเปลี่ยน state/direction)
+        self._update_animation_state()
+        
+        # 4) AI Logic (Boss or Standard)
+        self._update_ai(dt)
+        
+        # 5) Move & Collide (if not charging/attacking)
+        if not (self.is_boss and (self.state == "charge" or self.state == "attack")):
+             self._move_and_collide_circle(dt)
+        
+        # 6) Apply Animation Frame
+        self._apply_animation()
+        
+        # 7) Base update (frame ticking)
+        super().update(dt)
+
     def _update_ai(self, dt: float) -> None:
         """
-        เลือกว่า enemy ตัวนี้จะ 'patrol' เฉย ๆ หรือ 'วิ่งไล่ player'
-        โดยใช้ระบบ Steering Behaviors
+        AI Decision Making:
+        - Boss: Idle -> Chase -> Charge -> Attack -> Cooldown
+        - Normal: Patrol <-> Chase
         """
-        if self.is_dead:
-            self.velocity.update(0, 0)
-            return
+        # --- Common: Physics Decay ---
+        # Friction/Drag
+        self.velocity *= 0.95 
+        self.acceleration *= 0 # Reset force
+        
+        # --- Boss Logic Updates ---
+        if self.is_boss:
+             # Cooldown tick
+             # Cooldown tick
+             if self.attack_cooldown_timer > 0:
+                 self.attack_cooldown_timer -= dt
+                 # Recovery phase: If just attacked (high cooldown), stay idle
+                 # Cooldown is usually 3.0s. Let's say first 1.0s is "recovery"
+                 total_cd = self.attack_config.get("cooldown", 3.0)
+                 if self.attack_cooldown_timer > (total_cd - 1.0):
+                     # Force Idle (stop moving)
+                     self.velocity = pygame.Vector2(0, 0)
+                     self.state = "idle" # Explicitly set state
+                     return
+                 
+             # Check Charge State
+             if self.state == "charge":
+                 self.charge_timer -= dt
+                 if self.charge_timer <= 0:
+                     self._start_attack_animation()
+                 return # Don't move while charging
+                 
+             # Check Attack State
+             if self.state == "attack":
+                 # Wait for animation to finish
+                 if self.check_animation_done():
+                     self._finish_attack()
+                 return # Don't move while attacking
 
-        # ถ้า game ยังไม่รู้จัก player ก็ patrol ไปก่อน
+        # --- Standard Movement / Chase Logic ---
         player = getattr(self.game, "player", None)
         if player is None:
-            self._patrol(dt)
-            return
-
-        # คำนวณระยะห่าง
-        ex, ey = self.rect.center
-        px, py = player.rect.center
+             self._patrol_logic(dt)
+             return
+             
+        # Distance checks
+        dist_sq = self.pos.distance_squared_to(player.pos)
         
-        pos_vec = self.pos
-        player_pos = pygame.Vector2(px, py)
-        dist_sq = pos_vec.distance_squared_to(player_pos)
-
-        # ถ้า player อยู่ในรัศมี -> ไล่ตามด้วย Physics
+        # Aggro Check
         if dist_sq <= self._aggro_radius_sq:
-            # 1. Reset acceleration
-            self.acceleration *= 0 
+            # --- Boss Attack Trigger ---
+            if self.is_boss and self._check_boss_attack_condition(player):
+                 self._start_charge(player)
+                 return
+
+            # --- Chase Movement ---
+            steer = pygame.Vector2(0, 0)
             
-            # 2. Add Forces
-            # Seek Force
-            seek_force = self._seek(player_pos)
-            self.acceleration += seek_force
+            # Seek
+            dist = math.sqrt(dist_sq)
+            if dist > 50: # Don't overlap perfectly
+                 steer += self._seek(player.pos)
             
-            # Separation Force (Optional: ถ้า enemies เยอะๆ ควรเปิดใช้)
-            # ต้องดึง list เพื่อนบ้านมาจาก game.enemies
-            # เพื่อประสิทธิภาพ เราจะ separate เฉพาะตัวใกล้ๆ จริงๆ (แต่ในที่นี้ขอ check หมดหรือสุ่มก็ได้)
+            # Separate
             if self.game and hasattr(self.game, "enemies"):
-                 # สุ่ม check บ้างเพื่อลดภาระ หรือ check หมดถ้ามีไม่เยอะ
-                sep_force = self._separate(self.game.enemies.sprites())
-                self.acceleration += sep_force * 1.5 # Weight separation higher
+                 steer += self._separate(self.game.enemies.sprites()) * 1.5
             
-            # 3. Apply Physics
+            self.acceleration += steer
+            
+            # Apply Physics
             self.velocity += self.acceleration * dt
-            # Limit speed
             if self.velocity.length() > self.max_speed:
                 self.velocity.scale_to_length(self.max_speed)
                 
-            # 4. update position (ทำใน update หลักแล้ว แต่ต้องส่ง velocity ไป)
-            # เราจะไม่อัปเดต rect ที่นี่ จะทำใน update() หลักผ่าน _move_and_collide_circle
-
-            # ปรับทิศหัน
-            if self.velocity.length_squared() > 10: # ขยับนิดเดียวไม่ต้องหัน
-                self.facing = self.velocity.normalize()
+            # Facing
+            if self.velocity.length_squared() > 10:
+                self.state = "walk"
+                # Smooth facing update? or instant? Instant for pixel art usually better
+                if abs(self.velocity.x) > abs(self.velocity.y):
+                    self.facing = pygame.Vector2(1 if self.velocity.x > 0 else -1, 0)
+                else:
+                    self.facing = pygame.Vector2(0, 1 if self.velocity.y > 0 else -1)
 
         else:
-            # ถ้าไกลเกินรัศมี -> เดิน patrol ไป-มาเหมือนเดิม
-            # (Patrol แบบเดิมมันปรับ rect เลย อาจจะต้องปรับปรุงถ้าจะให้เนียน)
-            self._patrol(dt)
+            # Idle / Patrol
+            self._patrol_logic(dt)
+
+    def _patrol_logic(self, dt: float):
+        # Patrol logic (override existing _patrol usage)
+        # Use simpler logic or reuse existing _patrol(dt) but adapt it
+        # Existing _patrol() updates position directly... let's keep using it for now for simplicity
+        # IF we want Boids physics everywhere, we'd rewrite patrol to use forces.
+        # For now, fallback to direct pos update if not chasing.
+        self._patrol(dt)
+        if abs(self.velocity.x) > 1:
+            self.state = "walk"
+        else:
+            self.state = "idle"
+
+    # --- Boss Specific Methods ---
+    def _check_boss_attack_condition(self, player) -> bool:
+        if self.attack_cooldown_timer > 0:
+            return False
+            
+        dist = self.pos.distance_to(player.pos)
+        attack_range = self.attack_config.get("range", 100)
+        return dist <= attack_range
+
+    def _start_charge(self, player):
+        self.state = "charge"
+        self.charge_timer = self.attack_config.get("charge_time", 1.0)
+        self.velocity.update(0, 0)
+        self.attack_target_pos = player.pos.copy() # Lock target location
+
+
+
+    def _start_attack_animation(self):
+        self.state = "attack"
+        self.frame_index = 0
+        self.animation_timer = 0.0
+        self.attack_anim_done = False
+        
+        # Face target
+        if self.attack_target_pos:
+            diff = self.attack_target_pos - self.pos
+            if diff.length_squared() > 0:
+                 if abs(diff.x) > abs(diff.y):
+                    self.facing = pygame.Vector2(1 if diff.x > 0 else -1, 0)
+                 else:
+                    self.facing = pygame.Vector2(0, 1 if diff.y > 0 else -1)
+        
+        # Spawn Rock Barrage (Projectiles)
+        self._spawn_rock_barrage()
+
+    def _spawn_rock_barrage(self):
+        if not self.attack_target_pos:
+            return
+            
+        import random
+        
+        # Num rocks
+        num_rocks = 8
+        
+        # Center of attack area
+        center = self.attack_target_pos
+        radius = self.attack_config.get("damage_radius", 150)
+        iso_scale_y = 0.42
+        
+        dmg_mult = self.attack_config.get("damage_multiplier", 1.5)
+        
+        for _ in range(num_rocks):
+            # Angular distribution
+            angle_rad = random.uniform(0, 2 * math.pi)
+            # Radial distribution (sqrt for uniform circle area)
+            r = radius * math.sqrt(random.random())
+            
+            # Isometric offset
+            off_x = r * math.cos(angle_rad)
+            off_y = r * math.sin(angle_rad) * iso_scale_y
+            
+            target_pt = center + pygame.Vector2(off_x, off_y)
+            
+            # Start pos: Boss center (or slightly above head)
+            start_pos = pygame.Vector2(self.rect.center)
+            start_pos.y -= 20 # High up
+            
+            direction = (target_pt - start_pos)
+            if direction.length_squared() > 0:
+                direction = direction.normalize()
+            else:
+                direction = pygame.Vector2(0, 1) # Fallback down
+            
+            # Groups
+            groups = [self.game.all_sprites]
+            if hasattr(self.game, "enemy_projectiles"):
+                groups.append(self.game.enemy_projectiles)
+            elif hasattr(self.game, "projectiles"): # Fallback
+                groups.append(self.game.projectiles)
+            
+            ProjectileNode(
+                self,           # owner
+                start_pos,      # pos
+                direction,      # direction
+                880,            # speed
+                DamagePacket(   # damage_packet
+                    base=0.0,
+                    damage_type="physical",
+                    scaling_attack=dmg_mult
+                ),
+                "rock",         # projectile_id
+                2.0,            # lifetime
+                *groups
+            )
+
+    def _finish_attack(self):
+        self.state = "idle"
+        self.attack_cooldown_timer = self.attack_config.get("cooldown", 3.0)
+
+    # ============================================================
+    # Draw Override (Telegraphing)
+    # ============================================================
+    # ============================================================
+    # Draw Override (Telegraphing) - Called manually by GameScene
+    # ============================================================
+    def draw_extra(self, surface: pygame.Surface, camera_offset: pygame.Vector2) -> None:
+        if self.state == "charge" and self.attack_target_pos:
+            radius = self.attack_config.get("damage_radius", 80)
+            total_time = self.attack_config.get("charge_time", 1.0)
+            
+            if total_time > 0:
+                progress = 1.0 - (self.charge_timer / total_time)
+            else:
+                progress = 1.0
+                
+            alpha = int(100 + 55 * progress)
+            
+            center = self.attack_target_pos - camera_offset
+            
+            # Isometric Projection (25 degrees)
+            # sin(25) approx 0.4226
+            iso_scale_y = 0.42
+            
+            width = radius * 2
+            height = radius * 2 * iso_scale_y
+            
+            # Draw telegraph ellipse
+            # 1. Surface for alpha blending
+            s = pygame.Surface((width, height), pygame.SRCALPHA)
+            
+            # Center of the surface
+            cx, cy = width / 2, height / 2
+            
+            # 2. Draw filled ellipse (Red with transparency)
+            # Alpha 128 for 50% visibility
+            fill_color = (255, 0, 0, 128) 
+            # pygame.draw.ellipse(surface, color, rect)
+            pygame.draw.ellipse(s, fill_color, (0, 0, width, height))
+            
+            # 3. Draw growing/shrinking ring
+            ring_color = (255, 100, 100, 255) 
+            current_ring_w = width * progress
+            current_ring_h = height * progress
+            
+            if current_ring_w > 1:
+                # Centered rect for ring
+                ring_rect = pygame.Rect(
+                    cx - current_ring_w/2, 
+                    cy - current_ring_h/2, 
+                    current_ring_w, 
+                    current_ring_h
+                )
+                pygame.draw.ellipse(s, ring_color, ring_rect, 3)
+            
+            # Blit to world
+            # Use center - half dimensions to get top-left
+            draw_pos = (center.x - width/2, center.y - height/2)
+            surface.blit(s, draw_pos)
+
 
     # ============================================================
     # Animation state
@@ -376,7 +643,7 @@ class EnemyNode(AnimatedNode):
         else:
             self.direction = "down" if y >= 0 else "up"
 
-        # dead > hurt > walk/idle
+        # dead > hurt > charge/attack > walk/idle
         if self.is_dead and ("dead", self.direction) in self.animations:
             self.state = "dead"
             return
@@ -385,17 +652,35 @@ class EnemyNode(AnimatedNode):
             self.state = "hurt"
             return
 
+        # Boss states (Charge/Attack) take precedence over walk/idle
+        if self.is_boss and (self.state == "charge" or self.state == "attack"):
+            return
+
         if self.velocity.length_squared() > 0:
             self.state = "walk"
         else:
             self.state = "idle"
 
+    def check_animation_done(self) -> bool:
+        """Check if non-looping animation has finished"""
+        return self.finished
+
     def _apply_animation(self) -> None:
         frames = self.animations.get((self.state, self.direction))
         if not frames:
             return
+            
+        # Determine loop settings
+        should_loop = (self.state not in ("attack", "dead"))
+        
+        # If frames changed, apply new frames
         if frames is not self.frames:
-            self.set_frames(frames, reset=False)
+            # Force reset for attack/dead to start from beginning
+            should_reset = (self.state in ("attack", "dead"))
+            self.set_frames(frames, loop=should_loop, reset=should_reset)
+        else:
+            # If frames same, just ensure loop setting is correct (e.g. maybe unlikely to change dynamically but safe)
+            self.loop = should_loop
 
 
     # ============================================================

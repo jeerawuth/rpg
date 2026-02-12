@@ -85,8 +85,18 @@ class AnimatedNode(NodeBase):
 
     # ---------- การอัปเดตเฟรม ----------
     def _update_animation(self, dt: float) -> None:
-        if self.finished or len(self.frames) <= 1:
+        if self.finished:
             return
+
+        # Special Case: Single frame
+        if len(self.frames) <= 1:
+             self._time_accumulator += dt
+             if self._time_accumulator >= self.frame_duration:
+                 if not self.loop:
+                     self.finished = True
+                 else:
+                     self._time_accumulator %= self.frame_duration
+             return
 
         self._time_accumulator += dt
 

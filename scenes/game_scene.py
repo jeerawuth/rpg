@@ -70,6 +70,7 @@ class GameScene(BaseScene):
         self.all_sprites = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
+        self.enemy_projectiles = pygame.sprite.Group() # New group for enemy projectiles
         self.items = pygame.sprite.Group()          # สำหรับไอเท็มที่วางในฉาก
         self.decorations = pygame.sprite.Group()    # ของตกแต่งฉาก (ต้นไม้ ก้อนหิน ฯลฯ)
 
@@ -77,6 +78,7 @@ class GameScene(BaseScene):
         self.game.all_sprites = self.all_sprites
         self.game.enemies = self.enemies
         self.game.projectiles = self.projectiles
+        self.game.enemy_projectiles = self.enemy_projectiles
         self.game.decorations = self.decorations
 
 
@@ -468,6 +470,31 @@ class GameScene(BaseScene):
             kill_attack_on_hit=True,
         )
 
+        # Projectile vs Player
+        def on_projectile_hit_player(projectile, player):
+            # Don't hit self
+            if projectile.owner == player:
+                return
+            if player.is_dead:
+                 return
+                 
+            # Hit!
+            packet: DamagePacket = projectile.damage_packet
+            player.take_hit(projectile.owner.stats, packet)
+            projectile.kill()
+
+        # Check collision with player
+        # PLAYER vs ENEMY PROJECTILES
+        hits = pygame.sprite.spritecollide(self.player, self.enemy_projectiles, dokill=False)
+        for p in hits:
+            on_projectile_hit_player(p, self.player)
+
+        # PLAYER vs PLAYER PROJECTILES (Friendly Fire Check - usually ignored, but if reflecting?)
+        # For now, ignore player hitting self, logic is inside on_projectile_hit_player
+        hits_self = pygame.sprite.spritecollide(self.player, self.projectiles, dokill=False)
+        for p in hits_self:
+            on_projectile_hit_player(p, self.player)
+
 
         # Player vs Items (pickup)
         hits = pygame.sprite.spritecollide(self.player, self.items, dokill=True)
@@ -592,6 +619,11 @@ class GameScene(BaseScene):
             # <--- NEW: Draw Collision Indicator --->
             if getattr(sprite, "show_collision_indicator", False) and not getattr(sprite, "is_dead", False):
                 self._draw_collision_indicator(surface, sprite, offset)
+            # <--- END NEW --->
+            
+            # <--- NEW: Draw Extra Visuals (e.g. Boss Telegraph) --->
+            if hasattr(sprite, "draw_extra"):
+                sprite.draw_extra(surface, offset)
             # <--- END NEW --->
 
             # <--- NEW: Draw Player Guide (Back) --->

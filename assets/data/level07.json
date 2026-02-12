@@ -203740,7 +203740,8 @@
         800,
         450
       ],
-      "spawn_time": 0
+      "spawn_time": 0,
+      "amount": 5
     },
     {
       "type": "slime_green",
@@ -203748,7 +203749,8 @@
         1024,
         676
       ],
-      "spawn_time": 5
+      "spawn_time": 5,
+      "amount": 5
     },
     {
       "type": "slime_green",
@@ -203756,7 +203758,8 @@
         986,
         500
       ],
-      "spawn_time": 15
+      "spawn_time": 15,
+      "amount": 5
     },
     {
       "type": "goblin",
@@ -203764,7 +203767,8 @@
         1056,
         650
       ],
-      "spawn_time": 15
+      "spawn_time": 15,
+      "amount": 5
     },
     {
       "type": "boss_orc",
@@ -203772,7 +203776,8 @@
         866,
         650
       ],
-      "spawn_time": 20
+      "spawn_time": 20,
+      "amount": 5
     },
     {
       "type": "troll",
@@ -203780,7 +203785,8 @@
         846,
         640
       ],
-      "spawn_time": 25
+      "spawn_time": 25,
+      "amount": 10
     }
   ],
   "item_spawns": [
