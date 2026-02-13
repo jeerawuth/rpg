@@ -192746,14 +192746,6 @@
         980
       ],
       "spawn_time": 35
-    },
-    {
-      "type": "boss_orc",
-      "pos": [
-        1156,
-        980
-      ],
-      "spawn_time": 0
     }
   ],
   "item_spawns": [

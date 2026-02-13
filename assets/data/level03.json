@@ -203411,12 +203411,13 @@
   ],
   "enemy_spawns": [
     {
-      "type": "slime_green",
+      "type": "spider",
       "pos": [
         640,
         380
       ],
-      "spawn_time": 0
+      "spawn_time": 0,
+      "amount": 5
     },
     {
       "type": "slime_green",
@@ -203424,15 +203425,8 @@
         1820,
         750
       ],
-      "spawn_time": 5
-    },
-    {
-      "type": "slime_green",
-      "pos": [
-        1098,
-        550
-      ],
-      "spawn_time": 5
+      "spawn_time": 5,
+      "amount": 5
     },
     {
       "type": "orc",
@@ -203477,12 +203471,13 @@
       "amount": 5
     },
     {
-      "type": "slime_green",
+      "type": "demona",
       "pos": [
         2400,
         600
       ],
-      "spawn_time": 20
+      "spawn_time": 20,
+      "amount": 3
     },
     {
       "type": "slime_green",
@@ -203495,29 +203490,14 @@
     {
       "type": "orc",
       "pos": [
-        1820,
-        750
-      ],
-      "spawn_time": 25
-    },
-    {
-      "type": "orc",
-      "pos": [
         1098,
         550
       ],
-      "spawn_time": 25
+      "spawn_time": 25,
+      "amount": 5
     },
     {
-      "type": "orc",
-      "pos": [
-        998,
-        500
-      ],
-      "spawn_time": 25
-    },
-    {
-      "type": "orc",
+      "type": "green",
       "pos": [
         778,
         850
@@ -203533,7 +203513,7 @@
       "spawn_time": 30
     },
     {
-      "type": "boss_orc",
+      "type": "orc",
       "pos": [
         680,
         750
@@ -203551,13 +203531,13 @@
       "amount": 10
     },
     {
-      "type": "spider",
+      "type": "boss_orc",
       "pos": [
         1820,
         560
       ],
       "spawn_time": 35,
-      "amount": 10
+      "amount": 1
     }
   ],
   "item_spawns": [

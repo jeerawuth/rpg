@@ -92,7 +92,8 @@ class GameApp:
     def run(self) -> None:
         while self.running:
             dt_ms = self.clock.tick(FPS)
-            dt = dt_ms / 1000.0
+            # Cap dt to prevent "spiral of death" or huge jumps (e.g. window drag)
+            dt = min(dt_ms / 1000.0, 0.1)
 
             events = pygame.event.get()
             for event in events:

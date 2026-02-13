@@ -57,7 +57,7 @@ ENEMY_CONFIG: dict[str, dict] = {
     },
     "boss_orc": {
         "sprite_id": "boss_orc",
-        "scale": 0.5,  # ตัวใหญ่กว่าปกติ (ปกติ 0.25)
+        "scale": 0.4,  # ตัวใหญ่กว่าปกติ (ปกติ 0.25)
         "stats": Stats(
             max_hp=1000,
             hp=1000,
