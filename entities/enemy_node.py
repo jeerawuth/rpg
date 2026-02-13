@@ -676,7 +676,8 @@ class EnemyNode(AnimatedNode):
         # If frames changed, apply new frames
         if frames is not self.frames:
             # Force reset for attack/dead to start from beginning
-            should_reset = (self.state in ("attack", "dead"))
+            # Also reset if the previous animation was finished (e.g. coming from attack -> idle)
+            should_reset = (self.state in ("attack", "dead")) or self.finished
             self.set_frames(frames, loop=should_loop, reset=should_reset)
         else:
             # If frames same, just ensure loop setting is correct (e.g. maybe unlikely to change dynamically but safe)
@@ -771,33 +772,7 @@ class EnemyNode(AnimatedNode):
     # ============================================================
     # Update
     # ============================================================
-    def update(self, dt: float) -> None:
-        self.status.update(dt)
 
-        # นับเวลาหยุดนิ่ง/โดนตี (hurt_timer)
-        if not self.is_dead and self.hurt_timer > 0:
-            self.hurt_timer -= dt
-            if self.hurt_timer < 0:
-                self.hurt_timer = 0.0
-
-        # ถ้ายังไม่ตาย และไม่ได้อยู่ในช่วงหยุดนิ่ง ค่อยอัปเดต AI / เดินไล่ player
-        if not self.is_dead and self.hurt_timer <= 0:
-            self._update_ai(dt)
-            
-            # <--- แทนที่การเคลื่อนที่ด้วยเมธอดชนกำแพง --->
-            if self.velocity.length_squared() > 0:
-                self._move_and_collide_circle(dt)
-            else:
-                # ถ้าไม่มีความเร็ว ก็แค่อัปเดต rect ให้ตรงกับ pos
-                self.rect.center = (round(self.pos.x), round(self.pos.y))
-            # <--- สิ้นสุดการแก้ไข --->
-            
-        # ถ้าอยู่ในช่วง hurt หรือ dead ก็ให้ rect ตรงกับ pos ปัจจุบัน
-        else:
-             self.rect.center = (round(self.pos.x), round(self.pos.y))
-
-
-        self._update_animation_state()
         self._apply_animation()
 
         super().update(dt)
