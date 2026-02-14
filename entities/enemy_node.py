@@ -128,13 +128,6 @@ class EnemyNode(AnimatedNode):
         except FileNotFoundError:
             self.sfx_hit = None  # กัน error ถ้ายังไม่มีไฟล์
 
-        try:
-            # Sound for interruption (sharper/magic sound)
-            self.sfx_interrupt = self.game.resources.load_sound("sfx/magic_lightning.wav")
-            self.sfx_interrupt.set_volume(0.8)
-        except FileNotFoundError:
-            self.sfx_interrupt = None
-
         # ---------- Position ----------
         self.rect.center = pos
 
@@ -522,6 +515,14 @@ class EnemyNode(AnimatedNode):
         if not self.attack_target_pos:
             return
             
+        # Play cast sound (using bow for now as projectile launch)
+        self.game.audio.play_sfx(
+            "sfx/bow_shoot.wav",
+            volume=0.8,
+            channel="auto",
+            cooldown_ms=500
+        )
+            
         import random
         
         # Num rocks
@@ -804,8 +805,14 @@ class EnemyNode(AnimatedNode):
                 is_crit=True # Make it big
             )
             
-            if hasattr(self, "sfx_interrupt") and self.sfx_interrupt:
-                self.sfx_interrupt.play()
+            # Use AudioManager to play sound with cooldown and dedicated channel
+            # This prevents loudness stacking when multiple interruptions happen quickly
+            self.game.audio.play_sfx(
+                "sfx/magic_lightning.wav",
+                volume=0.8,
+                channel="impact",    # Use high-priority channel
+                cooldown_ms=400      # Prevent re-triggering too fast
+            )
             
             # Note: We proceed to take damage and change state to "hurt",
             # effectively cancelling the skill logic. This is intended for now.
