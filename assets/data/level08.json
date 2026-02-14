@@ -273481,12 +273481,13 @@
       "amount": 5
     },
     {
-      "type": "boss_orc",
+      "type": "demona",
       "pos": [
         866,
         650
       ],
-      "spawn_time": 20
+      "spawn_time": 20,
+      "amount": 5
     },
     {
       "type": "undead",
@@ -273496,6 +273497,15 @@
       ],
       "spawn_time": 20,
       "amount": 10
+    },
+    {
+      "type": "boss_orc",
+      "pos": [
+        1283,
+        415
+      ],
+      "spawn_time": 25,
+      "amount": 3
     }
   ],
   "item_spawns": [
@@ -273523,7 +273533,7 @@
         1059,
         1347
       ],
-      "amount": 1,
+      "amount": 2,
       "spawn_time": 10
     },
     {

@@ -273550,6 +273550,15 @@
       ],
       "spawn_time": 33,
       "amount": 10
+    },
+    {
+      "type": "boss_orc",
+      "pos": [
+        1890,
+        710
+      ],
+      "spawn_time": 36,
+      "amount": 3
     }
   ],
   "item_spawns": [

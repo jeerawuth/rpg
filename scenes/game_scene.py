@@ -468,6 +468,7 @@ class GameScene(BaseScene):
             targets=self.enemies,
             on_hit=on_projectile_hit,
             kill_attack_on_hit=True,
+            # collided_callback=pygame.sprite.collide_circle  <-- เอาออกเพื่อให้กลับไปใช้ Rect สำหรับการโจมตี
         )
 
         # Projectile vs Player
@@ -485,7 +486,7 @@ class GameScene(BaseScene):
 
         # Check collision with player
         # PLAYER vs ENEMY PROJECTILES
-        hits = pygame.sprite.spritecollide(self.player, self.enemy_projectiles, dokill=False)
+        hits = pygame.sprite.spritecollide(self.player, self.enemy_projectiles, dokill=False, collided=pygame.sprite.collide_circle)
         for p in hits:
             on_projectile_hit_player(p, self.player)
 
@@ -557,8 +558,8 @@ class GameScene(BaseScene):
             if self.player_contact_timer < 0:
                 self.player_contact_timer = 0.0
 
-        # ใช้ rect collision แบบเดิม
-        touch_hits = pygame.sprite.spritecollide(self.player, self.enemies, False)
+        # ใช้ rect collision แบบเดิม -> เปลี่ยนเป็น circle
+        touch_hits = pygame.sprite.spritecollide(self.player, self.enemies, False, collided=pygame.sprite.collide_circle)
 
         if touch_hits and self.player_contact_timer <= 0.0:
             for enemy in touch_hits:

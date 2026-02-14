@@ -273449,7 +273449,7 @@
       "amount": 3
     },
     {
-      "type": "slime_green",
+      "type": "orc",
       "pos": [
         986,
         500
@@ -273473,7 +273473,7 @@
         650
       ],
       "spawn_time": 20,
-      "amount": 5
+      "amount": 3
     }
   ],
   "item_spawns": [

@@ -587,48 +587,67 @@ class EnemyNode(AnimatedNode):
             else:
                 progress = 1.0
                 
-            alpha = int(100 + 55 * progress)
-            
-            center = self.attack_target_pos - camera_offset
-            
-            # Isometric Projection (25 degrees)
-            # sin(25) approx 0.4226
+            # Isometric Projection
             iso_scale_y = 0.42
-            
             width = radius * 2
             height = radius * 2 * iso_scale_y
             
-            # Draw telegraph ellipse
-            # 1. Surface for alpha blending
-            s = pygame.Surface((width, height), pygame.SRCALPHA)
+            # Create a surface for the telegraph (with alpha)
+            # Make it slightly larger to avoid clipping anti-aliased edges
+            s_width, s_height = int(width + 4), int(height + 4)
+            s = pygame.Surface((s_width, s_height), pygame.SRCALPHA)
+            cx, cy = s_width / 2, s_height / 2
             
-            # Center of the surface
-            cx, cy = width / 2, height / 2
+            # --- Visual Design ---
+            # 1. Base Danger Zone (Low Alpha Red)
+            # Requested: ~30% transparency -> Alpha approx 76 (out of 255)
+            # We can pulse it slightly for "alive" feel
+            pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) * 0.5 # 0.0 - 1.0
+            base_alpha = 60 + int(20 * pulse) # 60-80 alpha
             
-            # 2. Draw filled ellipse (Red with transparency)
-            # Alpha 128 for 50% visibility
-            fill_color = (255, 0, 0, 128) 
-            # pygame.draw.ellipse(surface, color, rect)
-            pygame.draw.ellipse(s, fill_color, (0, 0, width, height))
+            base_color = (255, 20, 20, base_alpha)
+            pygame.draw.ellipse(s, base_color, (2, 2, width, height))
             
-            # 3. Draw growing/shrinking ring
-            ring_color = (255, 100, 100, 255) 
-            current_ring_w = width * progress
-            current_ring_h = height * progress
+            # 2. Outer Warning Rim (Brighter, thinner)
+            rim_color = (255, 80, 80, 150)
+            pygame.draw.ellipse(s, rim_color, (2, 2, width, height), 2)
             
-            if current_ring_w > 1:
-                # Centered rect for ring
-                ring_rect = pygame.Rect(
-                    cx - current_ring_w/2, 
-                    cy - current_ring_h/2, 
-                    current_ring_w, 
-                    current_ring_h
-                )
-                pygame.draw.ellipse(s, ring_color, ring_rect, 3)
+            # 3. Inner "Filling" Circle (The Timer)
+            # Grow from center is usually clearer for "charging up"
+            # Or Shrink from outside (classic MMO style). Let's stick to shrink inward as "impact imminent"
             
-            # Blit to world
-            # Use center - half dimensions to get top-left
-            draw_pos = (center.x - width/2, center.y - height/2)
+            # Inner circle properties
+            inner_w = width * (1.0 - progress) # Shrink as progress -> 1
+            inner_h = height * (1.0 - progress)
+            
+            if inner_w > 1:
+                # Center rect
+                start_x = cx - inner_w / 2
+                start_y = cy - inner_h / 2
+                
+                # Color shifts from Yellow -> Red as it gets smaller
+                r_val = 255
+                g_val = int(255 * (1.0 - progress)) # Yellow -> Red
+                inner_color = (r_val, g_val, 0, 180) # High alpha for visibility
+                
+                ring_rect = pygame.Rect(start_x, start_y, inner_w, inner_h)
+                pygame.draw.ellipse(s, inner_color, ring_rect, 2)
+                
+            # 4. Pattern / Runes (Optional Decoration)
+            # Just a static cross or smaller ring to make it look "tech/magic"
+            deco_alpha = 40
+            deco_color = (255, 0, 0, deco_alpha)
+            # Dashed circle effect simulation (just a smaller static ring)
+            pygame.draw.ellipse(s, deco_color, (cx - width*0.35, cy - height*0.35, width*0.7, height*0.7), 1)
+
+            
+            # Draw to world
+            # Position correctly (center - half size)
+            center = self.attack_target_pos - camera_offset
+            draw_pos = (center.x - s_width/2, center.y - s_height/2)
+            
+            # Add BLEND_ADD (Additive Blending) for "Glowing" look if desired?
+            # Standard BLEND_ALPHA is safer for visibility on bright grounds.
             surface.blit(s, draw_pos)
 
 

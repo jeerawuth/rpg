@@ -403,6 +403,9 @@ class ProjectileNode(AnimatedNode):
             direction = pygame.Vector2(1, 0)
         self.direction = direction.normalize()
 
+        # Radius for circle collision
+        self.radius: float = 10.0
+
         # คำนวณมุมจากทิศทาง และ snap เป็น 8 ทิศ (step ละ 45°)
         self._update_angle()
 

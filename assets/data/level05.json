@@ -91173,7 +91173,7 @@
         450
       ],
       "spawn_time": 15,
-      "amount": 2
+      "amount": 3
     },
     {
       "type": "boss_orc",
@@ -91182,7 +91182,7 @@
         350
       ],
       "spawn_time": 20,
-      "amount": 5
+      "amount": 2
     }
   ],
   "item_spawns": [

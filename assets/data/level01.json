@@ -192740,12 +192740,12 @@
       "spawn_time": 35
     },
     {
-      "type": "demona",
+      "type": "boss_orc",
       "pos": [
         1156,
         980
       ],
-      "spawn_time": 35
+      "spawn_time": 10
     }
   ],
   "item_spawns": [
