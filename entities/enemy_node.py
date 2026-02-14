@@ -94,6 +94,7 @@ class EnemyNode(AnimatedNode):
         self.charge_timer: float = 0.0
         self.attack_cooldown_timer: float = 0.0
         self.attack_anim_done: bool = False
+        self.interrupt_display_timer: float = 0.0
         
         # Target for attack (snapshot player position)
         self.attack_target_pos: pygame.Vector2 | None = None
@@ -126,6 +127,13 @@ class EnemyNode(AnimatedNode):
             self.sfx_hit.set_volume(0.7)
         except FileNotFoundError:
             self.sfx_hit = None  # กัน error ถ้ายังไม่มีไฟล์
+
+        try:
+            # Sound for interruption (sharper/magic sound)
+            self.sfx_interrupt = self.game.resources.load_sound("sfx/magic_lightning.wav")
+            self.sfx_interrupt.set_volume(0.8)
+        except FileNotFoundError:
+            self.sfx_interrupt = None
 
         # ---------- Position ----------
         self.rect.center = pos
@@ -343,6 +351,9 @@ class EnemyNode(AnimatedNode):
         # 1) Timers
         if self.hurt_timer > 0:
             self.hurt_timer -= dt
+
+        if self.interrupt_display_timer > 0:
+            self.interrupt_display_timer -= dt
             
         if self.is_dead:
             self.death_timer -= dt
@@ -578,6 +589,27 @@ class EnemyNode(AnimatedNode):
     # Draw Override (Telegraphing) - Called manually by GameScene
     # ============================================================
     def draw_extra(self, surface: pygame.Surface, camera_offset: pygame.Vector2) -> None:
+        if self.interrupt_display_timer > 0 and self.attack_target_pos:
+            radius = self.attack_config.get("damage_radius", 80)
+            alpha_factor = min(1.0, self.interrupt_display_timer * 2.0)
+            alpha = int(255 * alpha_factor)
+            iso_scale_y = 0.42
+            width = radius * 2
+            height = radius * 2 * iso_scale_y
+            s_width, s_height = int(width + 4), int(height + 4)
+            s = pygame.Surface((s_width, s_height), pygame.SRCALPHA)
+            
+            # Green ring for interruption with slight fill
+            img_col = (50, 255, 50, alpha)
+            pygame.draw.ellipse(s, img_col, (2, 2, width, height), 3)
+            
+            # Optional: Add text "INTERRUPTED" or symbol? Maybe acts as simple feedback for now.
+            
+            center = self.attack_target_pos - camera_offset
+            draw_pos = (center.x - s_width/2, center.y - s_height/2)
+            surface.blit(s, draw_pos)
+            return
+
         if self.state == "charge" and self.attack_target_pos:
             radius = self.attack_config.get("damage_radius", 80)
             total_time = self.attack_config.get("charge_time", 1.0)
@@ -757,6 +789,26 @@ class EnemyNode(AnimatedNode):
         # modifier จาก status (เช่น debuff ทำให้โดนแรงขึ้น)
         dmg_mult = self.status.get_multiplier("damage_taken")
         damage_packet.attacker_multiplier *= dmg_mult
+        # --- Check for Charge Interruption ---
+        if self.is_boss and self.state == "charge":
+            # Set visual timer for green cancel ring
+            self.interrupt_display_timer = 0.5 
+            
+            # --- Added: Text Popup + Sound ---
+            DamageNumberNode(
+                self.game,
+                (self.rect.midtop[0], self.rect.midtop[1] - 20),
+                "ขัดจังหวะสำเร็จ!",
+                self.game.all_sprites,
+                color=(255, 255, 0), # Yellow
+                is_crit=True # Make it big
+            )
+            
+            if hasattr(self, "sfx_interrupt") and self.sfx_interrupt:
+                self.sfx_interrupt.play()
+            
+            # Note: We proceed to take damage and change state to "hurt",
+            # effectively cancelling the skill logic. This is intended for now.
 
         # compute_damage จะไปหัก HP ใน self.stats ให้เอง
         result = compute_damage(attacker_stats, self.stats, damage_packet)

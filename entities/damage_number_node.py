@@ -1,13 +1,13 @@
 import pygame
 from .node_base import NodeBase
-from config.settings import UI_SCORE_PATH
+from config.settings import UI_SCORE_PATH, UI_FONT_HUD_PATH
 
 class DamageNumberNode(NodeBase):
     def __init__(
         self,
         game,
         pos: tuple[float, float],
-        value: int,
+        value: int | str,
         *groups,
         color: tuple[int, int, int] = (255, 255, 255),
         is_crit: bool = False
@@ -17,15 +17,27 @@ class DamageNumberNode(NodeBase):
         self.pos = pygame.math.Vector2(pos)
         
         # ตั้งค่าฟอนต์
-        # ถ้าติด Critical อาจจะทำตัวใหญ่ขึ้นหรือสีต่าง
-        font_size = 28 if is_crit else 20
-        font = self.game.resources.load_font(UI_SCORE_PATH, font_size)
+        # ถ้าติด Critical หรือเป็นข้อความพิเศษ (str) อาจจะทำตัวใหญ่ขึ้น
+        if isinstance(value, str):
+            font_size = 23  # (28 - 5) ลดขนาดฟอนต์ข้อความลงตามที่ user ขอ
+        elif is_crit:
+            font_size = 28
+        else:
+            font_size = 20
         
-        text = str(value)
-        # ถ้าติดลบ (เช่น ลดเลือด) ให้ใส่ - นำหน้า หรือจะใส่แค่ตัวเลขก็ได้ตามดีไซน์
-        # โจทย์บอก "เช่น -20"
-        if value > 0:
-             text = f"-{value}"
+        # เลือกฟอนต์: ถ้าเป็นข้อความ (เช่น ภาษาไทย) ให้ใช้ UI_FONT_HUD_PATH
+        # ถ้าเป็นตัวเลข (Damage) ให้ใช้ UI_SCORE_PATH ตามเดิม
+        font_path = UI_FONT_HUD_PATH if isinstance(value, str) else UI_SCORE_PATH
+        font = self.game.resources.load_font(font_path, font_size)
+        
+        if isinstance(value, str):
+            text = value
+        else:
+            text = str(value)
+            # ถ้าติดลบ (เช่น ลดเลือด) ให้ใส่ - นำหน้า หรือจะใส่แค่ตัวเลขก็ได้ตามดีไซน์
+            # โจทย์บอก "เช่น -20"
+            if value > 0:
+                 text = f"-{value}"
         
         # Render text
         final_color = (255, 50, 50) if is_crit else color

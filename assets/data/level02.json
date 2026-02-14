@@ -102038,7 +102038,7 @@
       "type": "slime_green",
       "pos": [
         456,
-        775
+        575
       ],
       "spawn_time": 0,
       "amount": 10
@@ -102047,7 +102047,7 @@
       "type": "slime_green",
       "pos": [
         456,
-        675
+        555
       ],
       "spawn_time": 5,
       "amount": 3
@@ -102064,7 +102064,7 @@
       "type": "slime_green",
       "pos": [
         556,
-        675
+        575
       ],
       "spawn_time": 15
     },
@@ -102072,7 +102072,7 @@
       "type": "goblin",
       "pos": [
         456,
-        625
+        525
       ],
       "spawn_time": 15
     },
